@@ -81,6 +81,73 @@ function BookingContent() {
 
   const minDate = new Date().toISOString().split('T')[0];
 
+  const fetchUserLocation = async () => {
+    if (!('geolocation' in navigator)) {
+      toast.error('Location not supported on this device');
+      return;
+    }
+
+    setFetchingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await response.json();
+          
+          const addressParts = [];
+          if (data.locality) addressParts.push(data.locality);
+          if (data.city) addressParts.push(data.city);
+          if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
+          if (data.countryName) addressParts.push(data.countryName);
+          
+          const fullAddress = addressParts.length > 0 
+            ? addressParts.join(', ')
+            : `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          
+          setAddress(fullAddress);
+          toast.success('Location fetched successfully');
+        } catch {
+          setAddress(`Lat: ${latitude.toFixed(6)}, Long: ${longitude.toFixed(6)}`);
+          toast.info('Location coordinates saved');
+        }
+        
+        setFetchingLocation(false);
+      },
+      (error) => {
+        setFetchingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error('Location permission denied. Please enable location access in your device settings.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error('Location unavailable. Please try again.');
+            break;
+          case error.TIMEOUT:
+            toast.error('Location request timed out. Please try again.');
+            break;
+          default:
+            toast.error('Could not get location. Please enter manually.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 60000
+      }
+    );
+  };
+
+  const handleAddressFocus = () => {
+    if (!address) {
+      fetchUserLocation();
+    }
+  };
+
   return (
     <div className="mobile-container bg-gray-50 min-h-screen">
       <header className="bg-white px-4 py-4 sticky top-0 z-10 border-b border-gray-100">
