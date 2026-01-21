@@ -84,53 +84,86 @@ function BookingContent() {
 
   const minDate = new Date().toISOString().split('T')[0];
 
-    const fetchLocationSilently = async () => {
-      setFetchingLocation(true);
-      setShowLocationPermission(false);
-      
-      try {
-        const response = await fetch('https://ipapi.co/json/');
-        const data = await response.json();
+  const fetchAccurateLocation = async () => {
+    setFetchingLocation(true);
+    setShowLocationPermission(false);
+    
+    if (!navigator.geolocation) {
+      toast.error('Geolocation is not supported by your browser');
+      setFetchingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
         
-        if (data.error) {
-          throw new Error(data.reason || 'Failed to fetch location');
-        }
-        
-        const addressParts = [];
-        if (data.city) addressParts.push(data.city);
-        if (data.region) addressParts.push(data.region);
-        if (data.country_name) addressParts.push(data.country_name);
-        if (data.postal) addressParts.push(`- ${data.postal}`);
-        
-        const fullAddress = addressParts.length > 0 
-          ? addressParts.join(', ')
-          : 'Location detected';
-        
-        setAddress(fullAddress);
-        toast.success('Location filled successfully');
-      } catch {
         try {
-          const fallbackResponse = await fetch('https://api.bigdatacloud.net/data/client-ip-location?localityLanguage=en');
-          const fallbackData = await fallbackResponse.json();
+          const response = await fetch(
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+          );
+          const data = await response.json();
           
           const addressParts = [];
-          if (fallbackData.city?.name) addressParts.push(fallbackData.city.name);
-          if (fallbackData.location?.principalSubdivision) addressParts.push(fallbackData.location.principalSubdivision);
-          if (fallbackData.country?.name) addressParts.push(fallbackData.country.name);
+          if (data.locality) addressParts.push(data.locality);
+          if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
+          if (data.city && data.city !== data.locality) addressParts.push(data.city);
+          if (data.countryName) addressParts.push(data.countryName);
           
-          const fullAddress = addressParts.length > 0 
-            ? addressParts.join(', ')
-            : 'Location detected';
+          let fullAddress = addressParts.join(', ');
+          
+          if (!fullAddress) {
+            fullAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          }
           
           setAddress(fullAddress);
           toast.success('Location filled successfully');
         } catch {
-          toast.error('Could not fetch location. Please enter manually.');
+          try {
+            const nominatimResponse = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+              { headers: { 'User-Agent': 'UrbanAuto/1.0' } }
+            );
+            const nominatimData = await nominatimResponse.json();
+            
+            if (nominatimData.display_name) {
+              setAddress(nominatimData.display_name);
+              toast.success('Location filled successfully');
+            } else {
+              setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+              toast.success('Coordinates captured');
+            }
+          } catch {
+            setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+            toast.success('Coordinates captured');
+          }
         }
+        
+        setFetchingLocation(false);
+      },
+      (error) => {
+        setFetchingLocation(false);
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            toast.error('Location permission denied. Please enter address manually.');
+            break;
+          case error.POSITION_UNAVAILABLE:
+            toast.error('Location unavailable. Please enter address manually.');
+            break;
+          case error.TIMEOUT:
+            toast.error('Location request timed out. Please try again.');
+            break;
+          default:
+            toast.error('Could not fetch location. Please enter manually.');
+        }
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
       }
-      
-      setFetchingLocation(false);
-    };
+    );
+  };
 
     const handleLocationPermissionResponse = (allowed: boolean) => {
       setShowLocationPermission(false);
