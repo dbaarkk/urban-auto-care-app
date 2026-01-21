@@ -237,41 +237,27 @@ function BookingContent() {
           />
         </div>
 
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              Service Address
-            </h3>
-            <div className="relative">
+<div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                Service Address
+              </h3>
               <textarea
-                ref={addressInputRef}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Tap location button to fetch your address or enter manually"
+                onFocus={handleAddressFocus}
+                placeholder={fetchingLocation ? "Fetching your location..." : "Tap to fetch your location or enter manually"}
                 rows={3}
-                className={`w-full px-4 py-3 pr-12 rounded-xl border ${errors.address ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm outline-none resize-none`}
+                className={`w-full px-4 py-3 rounded-xl border ${errors.address ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm outline-none resize-none`}
               />
-<button
-                  type="button"
-                  onClick={fetchAccurateLocation}
-                  disabled={fetchingLocation}
-                  className="absolute right-3 top-3 p-2 bg-primary/10 rounded-lg text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
-                >
-                {fetchingLocation ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Navigation className="w-4 h-4" />
-                )}
-              </button>
+              {fetchingLocation && (
+                <p className="text-primary text-xs mt-1 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Fetching your location...
+                </p>
+              )}
+              {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
             </div>
-            {fetchingLocation && (
-              <p className="text-primary text-xs mt-1 flex items-center gap-1">
-                <Loader2 className="w-3 h-3 animate-spin" />
-                Fetching your location...
-              </p>
-            )}
-            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
-          </div>
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
