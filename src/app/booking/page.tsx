@@ -81,8 +81,8 @@ function BookingContent() {
 
   const minDate = new Date().toISOString().split('T')[0];
 
-  const fetchAccurateLocation = () => {
-    if (fetchingLocation) return;
+  const handleAddressFocus = () => {
+    if (address || fetchingLocation || locationFetched) return;
     
     setFetchingLocation(true);
     
@@ -105,10 +105,9 @@ function BookingContent() {
           
           if (data.display_name) {
             setAddress(data.display_name);
-            toast.success('Location filled successfully');
+            toast.success('Location filled');
           } else {
             setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-            toast.success('Coordinates captured');
           }
         } catch {
           try {
@@ -125,29 +124,20 @@ function BookingContent() {
             
             const fullAddress = addressParts.join(', ') || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
             setAddress(fullAddress);
-            toast.success('Location filled successfully');
+            toast.success('Location filled');
           } catch {
             setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-            toast.success('Coordinates captured');
           }
         }
         
         setFetchingLocation(false);
+        setLocationFetched(true);
       },
       (error) => {
         setFetchingLocation(false);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            toast.error('Location permission denied. Please enable location in your browser/device settings.');
-            break;
-          case error.POSITION_UNAVAILABLE:
-            toast.error('Location unavailable. Please try again.');
-            break;
-          case error.TIMEOUT:
-            toast.error('Location request timed out. Please try again.');
-            break;
-          default:
-            toast.error('Could not fetch location. Please try again.');
+        setLocationFetched(true);
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error('Location denied. Please enter manually.');
         }
       },
       {
