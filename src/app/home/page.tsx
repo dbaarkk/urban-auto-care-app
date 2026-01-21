@@ -108,7 +108,7 @@ export default function HomePage() {
 
       <div className="px-4 mt-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-base font-bold text-gray-900">Nearby Garages</h2>
+          <h2 className="text-base font-bold text-gray-900">About our garage</h2>
           <button 
             onClick={() => router.push('/services')}
             className="text-primary text-sm font-medium flex items-center gap-0.5"
