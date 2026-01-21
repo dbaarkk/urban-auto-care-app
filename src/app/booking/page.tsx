@@ -165,28 +165,28 @@ function BookingContent() {
     );
   };
 
-    const handleLocationPermissionResponse = (allowed: boolean) => {
-      setShowLocationPermission(false);
-      setLocationPermissionAsked(true);
-      
-      if (allowed) {
-        fetchLocationSilently();
-      }
-    };
+  const handleLocationPermissionResponse = (allowed: boolean) => {
+    setShowLocationPermission(false);
+    setLocationPermissionAsked(true);
+    
+    if (allowed) {
+      fetchAccurateLocation();
+    }
+  };
 
-    const handleAddressFocus = () => {
-      if (!address && !locationPermissionAsked && !fetchingLocation) {
-        setShowLocationPermission(true);
-      }
-    };
+  const handleAddressFocus = () => {
+    if (!address && !locationPermissionAsked && !fetchingLocation) {
+      setShowLocationPermission(true);
+    }
+  };
 
-    const handleLocationButtonClick = () => {
-      if (!address) {
-        setShowLocationPermission(true);
-      } else {
-        fetchLocationSilently();
-      }
-    };
+  const handleLocationButtonClick = () => {
+    if (!locationPermissionAsked) {
+      setShowLocationPermission(true);
+    } else {
+      fetchAccurateLocation();
+    }
+  };
 
   return (
     <div className="mobile-container bg-gray-50 min-h-screen">
