@@ -24,8 +24,6 @@ function BookingContent() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fetchingLocation, setFetchingLocation] = useState(false);
-  const [showLocationPermission, setShowLocationPermission] = useState(false);
-  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false);
   const addressInputRef = useRef<HTMLTextAreaElement>(null);
 
   const service = getServiceById(selectedService);
