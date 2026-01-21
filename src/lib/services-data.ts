@@ -100,7 +100,7 @@ export const services: Service[] = [
     id: 'car-dealership',
     name: 'Car Dealership',
     subtitle: 'Buy & Sell Quality Pre-Owned Vehicles',
-    image: '/car-dealership.jpg',
+    image: '/car-dealership-new.jpg',
     category: 'general',
     features: ['Verified Vehicles', 'Documentation Help', 'Fair Pricing', 'Inspection Report', 'Transfer Assistance']
   }
