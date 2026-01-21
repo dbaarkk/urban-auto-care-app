@@ -157,6 +157,52 @@ function BookingContent() {
 
   return (
     <div className="mobile-container bg-gray-50 min-h-screen">
+      <AnimatePresence>
+        {showLocationPermission && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowLocationPermission(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl"
+            >
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                  <MapPin className="w-8 h-8 text-primary" />
+                </div>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 text-center mb-2">
+                Location Access
+              </h3>
+              <p className="text-sm text-gray-600 text-center mb-6">
+                Do we have permission to fetch and fill your location?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleLocationPermissionResponse(false)}
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-700 font-medium text-sm hover:bg-gray-50 transition-colors"
+                >
+                  No, thanks
+                </button>
+                <button
+                  onClick={() => handleLocationPermissionResponse(true)}
+                  className="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-colors"
+                >
+                  Yes, allow
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <header className="bg-white px-4 py-4 sticky top-0 z-10 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <button onClick={() => router.back()} className="p-2 -ml-2">
