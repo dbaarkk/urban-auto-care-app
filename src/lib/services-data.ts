@@ -100,15 +100,15 @@ export const services: Service[] = [
     id: 'car-dealership',
     name: 'Car Dealership',
     subtitle: 'Buy & Sell Quality Pre-Owned Vehicles',
-    image: '/car-wash.png',
+    image: '/car-dealership.jpg',
     category: 'general',
     features: ['Verified Vehicles', 'Documentation Help', 'Fair Pricing', 'Inspection Report', 'Transfer Assistance']
   }
 ];
 
 export const serviceCategories = [
-  { id: 'wash', name: 'Oil Change', icon: 'droplet', color: '#3B82F6' },
-  { id: 'detailing', name: 'Car Wash', icon: 'sparkles', color: '#10B981' },
+  { id: 'oil-change', name: 'Oil Change', icon: 'droplet', color: '#3B82F6' },
+  { id: 'wash', name: 'Car Wash', icon: 'sparkles', color: '#10B981' },
   { id: 'repair', name: 'Repairing', icon: 'wrench', color: '#F59E0B' },
   { id: 'general', name: 'General', icon: 'settings', color: '#8B5CF6' }
 ];

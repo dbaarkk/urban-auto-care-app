@@ -9,7 +9,8 @@ import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 
 const categoryIcons: Record<string, React.ReactNode> = {
-  wash: <Droplet className="w-6 h-6" />,
+  'oil-change': <Droplet className="w-6 h-6" />,
+  wash: <Sparkles className="w-6 h-6" />,
   detailing: <Sparkles className="w-6 h-6" />,
   repair: <Wrench className="w-6 h-6" />,
   general: <Settings className="w-6 h-6" />,
