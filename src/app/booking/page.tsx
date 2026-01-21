@@ -84,72 +84,76 @@ function BookingContent() {
 
   const minDate = new Date().toISOString().split('T')[0];
 
-  const fetchUserLocation = async () => {
-    if (!('geolocation' in navigator)) {
-      toast.error('Location not supported on this device');
-      return;
-    }
-
-    setFetchingLocation(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
+    const fetchLocationSilently = async () => {
+      setFetchingLocation(true);
+      setShowLocationPermission(false);
+      
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
         
+        if (data.error) {
+          throw new Error(data.reason || 'Failed to fetch location');
+        }
+        
+        const addressParts = [];
+        if (data.city) addressParts.push(data.city);
+        if (data.region) addressParts.push(data.region);
+        if (data.country_name) addressParts.push(data.country_name);
+        if (data.postal) addressParts.push(`- ${data.postal}`);
+        
+        const fullAddress = addressParts.length > 0 
+          ? addressParts.join(', ')
+          : 'Location detected';
+        
+        setAddress(fullAddress);
+        toast.success('Location filled successfully');
+      } catch {
         try {
-          const response = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-          );
-          const data = await response.json();
+          const fallbackResponse = await fetch('https://api.bigdatacloud.net/data/client-ip-location?localityLanguage=en');
+          const fallbackData = await fallbackResponse.json();
           
           const addressParts = [];
-          if (data.locality) addressParts.push(data.locality);
-          if (data.city) addressParts.push(data.city);
-          if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
-          if (data.countryName) addressParts.push(data.countryName);
+          if (fallbackData.city?.name) addressParts.push(fallbackData.city.name);
+          if (fallbackData.location?.principalSubdivision) addressParts.push(fallbackData.location.principalSubdivision);
+          if (fallbackData.country?.name) addressParts.push(fallbackData.country.name);
           
           const fullAddress = addressParts.length > 0 
             ? addressParts.join(', ')
-            : `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            : 'Location detected';
           
           setAddress(fullAddress);
-          toast.success('Location fetched successfully');
+          toast.success('Location filled successfully');
         } catch {
-          setAddress(`Lat: ${latitude.toFixed(6)}, Long: ${longitude.toFixed(6)}`);
-          toast.info('Location coordinates saved');
+          toast.error('Could not fetch location. Please enter manually.');
         }
-        
-        setFetchingLocation(false);
-      },
-      (error) => {
-        setFetchingLocation(false);
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            toast.error('Location permission denied. Please enable location access in your device settings.');
-            break;
-          case error.POSITION_UNAVAILABLE:
-            toast.error('Location unavailable. Please try again.');
-            break;
-          case error.TIMEOUT:
-            toast.error('Location request timed out. Please try again.');
-            break;
-          default:
-            toast.error('Could not get location. Please enter manually.');
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 60000
       }
-    );
-  };
+      
+      setFetchingLocation(false);
+    };
 
-  const handleAddressFocus = () => {
-    if (!address) {
-      fetchUserLocation();
-    }
-  };
+    const handleLocationPermissionResponse = (allowed: boolean) => {
+      setShowLocationPermission(false);
+      setLocationPermissionAsked(true);
+      
+      if (allowed) {
+        fetchLocationSilently();
+      }
+    };
+
+    const handleAddressFocus = () => {
+      if (!address && !locationPermissionAsked && !fetchingLocation) {
+        setShowLocationPermission(true);
+      }
+    };
+
+    const handleLocationButtonClick = () => {
+      if (!address) {
+        setShowLocationPermission(true);
+      } else {
+        fetchLocationSilently();
+      }
+    };
 
   return (
     <div className="mobile-container bg-gray-50 min-h-screen">
