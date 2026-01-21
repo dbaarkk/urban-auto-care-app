@@ -9,6 +9,14 @@ export interface Service {
 
 export const services: Service[] = [
   {
+    id: 'oil-change',
+    name: 'Oil Change',
+    subtitle: 'Premium Engine Oil Service & Filter Replacement',
+    image: '/oil-change.jpg',
+    category: 'oil-change',
+    features: ['Synthetic Oil', 'Oil Filter', 'Fluid Check', 'Engine Inspection', 'Quick Service']
+  },
+  {
     id: 'car-wash',
     name: 'Car Wash',
     subtitle: 'Professional Cleaning Service At Home',
