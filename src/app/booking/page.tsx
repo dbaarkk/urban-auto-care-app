@@ -81,17 +81,9 @@ function BookingContent() {
 
   const minDate = new Date().toISOString().split('T')[0];
 
-  const handleAddressFocus = () => {
-    if (address || fetchingLocation || locationFetched) return;
-    
+  const fetchLocation = async () => {
     setFetchingLocation(true);
     
-    if (!navigator.geolocation) {
-      toast.error('Geolocation is not supported by your browser');
-      setFetchingLocation(false);
-      return;
-    }
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
@@ -133,12 +125,9 @@ function BookingContent() {
         setFetchingLocation(false);
         setLocationFetched(true);
       },
-      (error) => {
+      () => {
         setFetchingLocation(false);
         setLocationFetched(true);
-        if (error.code === error.PERMISSION_DENIED) {
-          toast.error('Location denied. Please enter manually.');
-        }
       },
       {
         enableHighAccuracy: true,
@@ -146,6 +135,40 @@ function BookingContent() {
         maximumAge: 0
       }
     );
+  };
+
+  const handleAddressFocus = async () => {
+    if (address || fetchingLocation || locationFetched) return;
+    
+    if (!navigator.geolocation) {
+      toast.error('Geolocation not supported');
+      return;
+    }
+
+    // Check permission status using Permissions API
+    if (navigator.permissions) {
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        
+        if (permission.state === 'denied') {
+          // Permission was previously denied - user must reset in browser settings
+          toast.error('Location blocked. Reset in browser settings: Site Settings > Location > Allow', {
+            duration: 5000
+          });
+          setLocationFetched(true);
+          return;
+        }
+        
+        // Permission is 'prompt' or 'granted' - proceed to request
+        fetchLocation();
+      } catch {
+        // Permissions API failed, try directly
+        fetchLocation();
+      }
+    } else {
+      // No Permissions API, try directly
+      fetchLocation();
+    }
   };
 
   return (
