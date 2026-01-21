@@ -4,9 +4,10 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getServiceById, services } from '@/lib/services-data';
-import { ArrowLeft, Calendar, Clock, MapPin, Car, FileText, Check, Loader2, Navigation } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, MapPin, Car, FileText, Check, Loader2, Navigation, X } from 'lucide-react';
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { toast } from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function BookingContent() {
   const { user, isLoading, addBooking } = useAuth();
@@ -24,6 +25,8 @@ function BookingContent() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fetchingLocation, setFetchingLocation] = useState(false);
+  const [showLocationPermission, setShowLocationPermission] = useState(false);
+  const [locationPermissionAsked, setLocationPermissionAsked] = useState(false);
   const addressInputRef = useRef<HTMLTextAreaElement>(null);
 
   const service = getServiceById(selectedService);
