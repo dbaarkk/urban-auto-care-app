@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 
 export interface User {
   id: string;
@@ -39,6 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const USERS_KEY = 'urban_auto_users';
 const CURRENT_USER_KEY = 'urban_auto_current_user';
 const BOOKINGS_KEY = 'urban_auto_bookings';
+const SESSION_TIMESTAMP_KEY = 'urban_auto_session_timestamp';
 
 const hashPassword = (password: string): string => {
   let hash = 0;
@@ -50,17 +51,47 @@ const hashPassword = (password: string): string => {
   return hash.toString(16);
 };
 
+const safeGetItem = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const safeSetItem = (key: string, value: string): void => {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    console.error('Failed to save to localStorage');
+  }
+};
+
+const safeRemoveItem = (key: string): void => {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    console.error('Failed to remove from localStorage');
+  }
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem(CURRENT_USER_KEY);
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      loadBookings(parsedUser.id);
+    try {
+      const storedUser = safeGetItem(CURRENT_USER_KEY);
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        loadBookings(parsedUser.id);
+        safeSetItem(SESSION_TIMESTAMP_KEY, Date.now().toString());
+      }
+    } catch (error) {
+      console.error('Error loading user session:', error);
+      safeRemoveItem(CURRENT_USER_KEY);
     }
     setIsLoading(false);
   }, []);
