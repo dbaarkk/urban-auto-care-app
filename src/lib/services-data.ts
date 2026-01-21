@@ -3,7 +3,7 @@ export interface Service {
   name: string;
   subtitle: string;
   image: string;
-  category: 'wash' | 'detailing' | 'repair' | 'general';
+  category: 'wash' | 'detailing' | 'repair' | 'general' | 'oil-change';
   features: string[];
 }
 
