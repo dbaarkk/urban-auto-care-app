@@ -12,7 +12,7 @@ export const services: Service[] = [
     id: 'oil-change',
     name: 'Oil Change',
     subtitle: 'Premium Engine Oil Service & Filter Replacement',
-    image: '/oil-change-new.jpg',
+    image: '/oil-change-hd-new.jpg',
     category: 'oil-change',
     features: ['Synthetic Oil', 'Oil Filter', 'Fluid Check', 'Engine Inspection', 'Quick Service']
   },
