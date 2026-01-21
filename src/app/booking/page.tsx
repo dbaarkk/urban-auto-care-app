@@ -4,7 +4,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getServiceById, services } from '@/lib/services-data';
-import { ArrowLeft, Calendar, Clock, MapPin, Car, FileText, Check, Loader2, Navigation } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Car, FileText, Check, Loader2 } from 'lucide-react';
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { toast } from 'sonner';
 
