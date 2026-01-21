@@ -257,14 +257,13 @@ function BookingContent() {
                 ref={addressInputRef}
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                onFocus={handleAddressFocus}
-                placeholder="Tap to fetch your location or enter manually"
+                placeholder="Tap location button to fetch your address or enter manually"
                 rows={3}
                 className={`w-full px-4 py-3 pr-12 rounded-xl border ${errors.address ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm outline-none resize-none`}
               />
 <button
                   type="button"
-                  onClick={handleLocationButtonClick}
+                  onClick={fetchAccurateLocation}
                   disabled={fetchingLocation}
                   className="absolute right-3 top-3 p-2 bg-primary/10 rounded-lg text-primary hover:bg-primary/20 transition-colors disabled:opacity-50"
                 >
