@@ -93,41 +93,49 @@ function BookingContent() {
 
       const getAddress = async (latitude: number, longitude: number) => {
         try {
-          // Using a more detailed reverse geocoding approach
           const response = await fetch(
             `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
           );
           const data = await response.json();
           
-          const addressParts = [];
-          
-          // Try to construct a very detailed address
-          // BigDataCloud provides locality, principalSubdivision (State), city, etc.
-          // For street-level, we might need another API or hope locality Info has it
-          
-          const street = data.locality || data.lookupSource || '';
-          const city = data.city || '';
-          const state = data.principalSubdivision || '';
-          const pincode = data.postcode || '';
-          const country = data.countryName || 'India';
+          const parts = {
+            street: '',
+            house: '',
+            area: data.locality || '',
+            city: data.city || '',
+            state: data.principalSubdivision || '',
+            pincode: data.postcode || ''
+          };
 
-          if (street) addressParts.push(street);
-          if (city && city !== street) addressParts.push(city);
-          if (state) addressParts.push(state);
-          if (pincode) addressParts.push(pincode);
+          // BigDataCloud localityInfo often has more details
+          if (data.localityInfo && data.localityInfo.informative) {
+            data.localityInfo.informative.forEach((info: any) => {
+              if (info.order <= 10) { // Local details
+                if (!parts.street && (info.name.includes('Road') || info.name.includes('Street') || info.description === 'road')) {
+                  parts.street = info.name;
+                }
+              }
+            });
+          }
+
+          const addressParts = [];
+          if (parts.street) addressParts.push(parts.street);
+          if (parts.area && parts.area !== parts.street) addressParts.push(parts.area);
+          if (parts.city && parts.city !== parts.area) addressParts.push(parts.city);
+          if (parts.state) addressParts.push(parts.state);
+          if (parts.pincode) addressParts.push(parts.pincode);
           
           const fullAddress = addressParts.join(', ');
           
           if (fullAddress) {
             setAddress(fullAddress);
-            toast.success('Location detected successfully');
+            toast.success('Address fetched successfully');
           } else {
             setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
           }
         } catch (error) {
           console.error('Geocoding error:', error);
           setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-          toast.error('Location detected, but could not get address details');
         } finally {
           setFetchingLocation(false);
           setLocationFetched(true);
