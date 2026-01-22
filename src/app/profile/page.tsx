@@ -128,8 +128,19 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
-          {menuItems.map((item, index) => (
+          <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
+            <button
+              onClick={requestNotificationPermission}
+              className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors border-b border-gray-100"
+            >
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Info className="w-5 h-5 text-primary" />
+              </div>
+              <span className="flex-1 text-left text-sm font-medium text-gray-900">Enable Notifications</span>
+              <ChevronRight className="w-5 h-5 text-gray-400" />
+            </button>
+            {menuItems.map((item, index) => (
+
             <button
               key={item.label}
               onClick={() => item.href ? router.push(item.href) : item.onClick?.()}
