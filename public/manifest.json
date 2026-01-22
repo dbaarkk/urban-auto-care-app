@@ -1,0 +1,33 @@
+{
+  "name": "Urban Auto",
+  "short_name": "Urban Auto",
+  "description": "Premium Car Care & Auto Services in Raipur. Professional cleaning, detailing, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e3a8a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/urban-auto-logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/urban-auto-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Book Service",
+      "short_name": "Book",
+      "url": "/booking",
+      "icons": [{ "src": "/urban-auto-logo.jpg", "sizes": "192x192" }]
+    }
+  ]
+}
