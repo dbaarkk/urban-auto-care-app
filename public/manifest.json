@@ -3,11 +3,11 @@
   "name": "Urban Auto",
   "short_name": "Urban Auto",
   "description": "Urban Auto - Premium Car Care & Auto Services. Book professional cleaning, detailing, and periodic maintenance services instantly.",
-  "start_url": "/",
+  "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": [
-    "window-controls-overlay",
+    "tabbed",
     "standalone",
     "minimal-ui"
   ],
@@ -50,35 +50,35 @@
   "screenshots": [
     {
       "src": "/screenshot-1.jpg",
-      "sizes": "1080x2400",
+      "sizes": "971x2048",
       "type": "image/jpeg",
       "form_factor": "narrow",
-      "label": "Home Screen - Explore Services"
+      "label": "Urban Auto main screen"
     },
     {
-      "src": "/car-dealership-hd.jpg",
-      "sizes": "800x533",
+      "src": "/screenshot-wide.jpg",
+      "sizes": "1920x1080",
       "type": "image/jpeg",
       "form_factor": "wide",
-      "label": "Urban Auto Workshop - About Our Garage"
+      "label": "Urban Auto services dashboard"
     },
     {
       "src": "/screenshot-2.jpg",
-      "sizes": "1080x2400",
+      "sizes": "971x2048",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Service Selection - Choose Your Care"
     },
     {
       "src": "/screenshot-3.jpg",
-      "sizes": "1080x2400",
+      "sizes": "971x2048",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "My Bookings - Track Your Service"
     },
     {
       "src": "/screenshot-4.jpg",
-      "sizes": "1080x2400",
+      "sizes": "971x2048",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Contact Us - We're Here to Help"
@@ -123,8 +123,29 @@
   "launch_handler": {
     "client_mode": "focus-existing"
   },
-  "file_handlers": [],
-  "protocol_handlers": [],
+  "file_handlers": [
+    {
+      "action": "/open-file",
+      "accept": {
+        "application/pdf": [
+          ".pdf"
+        ],
+        "image/jpeg": [
+          ".jpg",
+          ".jpeg"
+        ],
+        "image/png": [
+          ".png"
+        ]
+      }
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+urbanauto",
+      "url": "/handle-protocol?url=%s"
+    }
+  ],
   "share_target": {
     "action": "/share",
     "method": "GET",
@@ -134,7 +155,7 @@
       "url": "url"
     }
   },
-  "iarc_rating_id": "",
+  "iarc_rating_id": "3+",
   "widgets": [],
   "edge_side_panel": {
     "preferred_width": 400
@@ -144,7 +165,7 @@
   },
   "scope_extensions": [
     {
-      "origin": "urbanauto.vercel.app"
+      "origin": "https://app-preview-ua.vercel.app"
     }
   ]
 }
