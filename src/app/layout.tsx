@@ -18,6 +18,19 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Urban Auto",
   },
+  formatDetection: {
+    telephone: true,
+  },
+  applicationName: "Urban Auto",
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "Urban Auto",
+    "theme-color": "#1e3a8a",
+    "msapplication-TileColor": "#1e3a8a",
+    "msapplication-tap-highlight": "no"
+  }
 };
 
 export default function RootLayout({
