@@ -1,33 +1,92 @@
 {
+  "id": "/",
   "name": "Urban Auto",
   "short_name": "Urban Auto",
   "description": "Premium Car Care & Auto Services in Raipur. Professional cleaning, detailing, and more.",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#ffffff",
   "theme_color": "#1e3a8a",
   "orientation": "portrait",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["lifestyle", "transportation", "productivity"],
   "icons": [
     {
-      "src": "/urban-auto-logo.jpg",
+      "src": "/icon-192.jpg",
       "sizes": "192x192",
       "type": "image/jpeg",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/urban-auto-logo.jpg",
+      "src": "/icon-192.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.jpg",
       "sizes": "512x512",
       "type": "image/jpeg",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
     }
   ],
-  "categories": ["lifestyle", "productivity"],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.jpg",
+      "sizes": "1080x2400",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Home Screen"
+    },
+    {
+      "src": "/screenshot-2.jpg",
+      "sizes": "1080x2400",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "All Services"
+    },
+    {
+      "src": "/screenshot-3.jpg",
+      "sizes": "1080x2400",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "My Bookings"
+    },
+    {
+      "src": "/screenshot-4.jpg",
+      "sizes": "1080x2400",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "Contact Us"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Book Service",
       "short_name": "Book",
+      "description": "Book a new service appointment",
       "url": "/booking",
-      "icons": [{ "src": "/urban-auto-logo.jpg", "sizes": "192x192" }]
+      "icons": [{ "src": "/icon-192.jpg", "sizes": "192x192" }]
+    },
+    {
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "description": "View your service history",
+      "url": "/bookings",
+      "icons": [{ "src": "/icon-192.jpg", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
 }
