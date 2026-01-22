@@ -36,7 +36,22 @@ export default function ProfilePage() {
     { icon: User, label: 'Edit Profile', onClick: () => toast.info('Profile editing coming soon') },
     { icon: HelpCircle, label: 'Contact Urban Auto', href: '/contact' },
     { icon: Info, label: 'About Us', href: '/about' },
+    { icon: Info, label: 'Privacy Policy', href: '/privacy-policy' },
   ];
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      toast.error('Notifications not supported');
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      toast.success('Notifications enabled!');
+    } else {
+      toast.error('Notification permission denied');
+    }
+  };
 
   return (
     <div className="mobile-container bg-gray-50 min-h-screen safe-bottom">
