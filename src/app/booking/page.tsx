@@ -87,43 +87,66 @@ function BookingContent() {
       
       const options = {
         enableHighAccuracy: true,
-        timeout: 5000,
-        maximumAge: 300000 // 5 minutes cache for instant response
+        timeout: 10000,
+        maximumAge: 0 // Force fresh location for accuracy
       };
 
       const getAddress = async (latitude: number, longitude: number) => {
         try {
+          // Using a more detailed reverse geocoding approach
           const response = await fetch(
             `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
           );
           const data = await response.json();
           
           const addressParts = [];
-          if (data.locality) addressParts.push(data.locality);
-          if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
-          if (data.city && data.city !== data.locality) addressParts.push(data.city);
           
-          const fullAddress = addressParts.join(', ') || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-          setAddress(fullAddress);
-          toast.success('Location detected');
-        } catch {
-          // Silent fallback to coords
+          // Try to construct a very detailed address
+          // BigDataCloud provides locality, principalSubdivision (State), city, etc.
+          // For street-level, we might need another API or hope locality Info has it
+          
+          const street = data.locality || data.lookupSource || '';
+          const city = data.city || '';
+          const state = data.principalSubdivision || '';
+          const pincode = data.postcode || '';
+          const country = data.countryName || 'India';
+
+          if (street) addressParts.push(street);
+          if (city && city !== street) addressParts.push(city);
+          if (state) addressParts.push(state);
+          if (pincode) addressParts.push(pincode);
+          
+          const fullAddress = addressParts.join(', ');
+          
+          if (fullAddress) {
+            setAddress(fullAddress);
+            toast.success('Location detected successfully');
+          } else {
+            setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+          }
+        } catch (error) {
+          console.error('Geocoding error:', error);
           setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+          toast.error('Location detected, but could not get address details');
+        } finally {
+          setFetchingLocation(false);
+          setLocationFetched(true);
         }
       };
 
-      // Try to get cached position first for instant fill
       navigator.geolocation.getCurrentPosition(
         (position) => {
           getAddress(position.coords.latitude, position.coords.longitude);
-          setFetchingLocation(false);
-          setLocationFetched(true);
         },
         (error) => {
           console.error('Location error:', error);
           setFetchingLocation(false);
           setLocationFetched(true);
-          toast.error('Could not fetch location automatically');
+          let message = 'Could not fetch location';
+          if (error.code === 1) message = 'Location permission denied';
+          else if (error.code === 2) message = 'Position unavailable';
+          else if (error.code === 3) message = 'Request timed out';
+          toast.error(message);
         },
         options
       );
