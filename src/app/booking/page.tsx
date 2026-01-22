@@ -81,61 +81,70 @@ function BookingContent() {
 
   const minDate = new Date().toISOString().split('T')[0];
 
-  const fetchLocation = async () => {
-    setFetchingLocation(true);
-    
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        
+    const fetchLocation = async () => {
+      if (fetchingLocation) return;
+      setFetchingLocation(true);
+      
+      const options = {
+        enableHighAccuracy: false, // Faster initial fetch
+        timeout: 5000,
+        maximumAge: 60000 // Use cached position if available within last minute
+      };
+
+      const getAddress = async (latitude: number, longitude: number) => {
         try {
+          // BigDataCloud is generally faster for reverse geocoding
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`,
-            { headers: { 'User-Agent': 'UrbanAuto/1.0' } }
+            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
           );
           const data = await response.json();
           
-          if (data.display_name) {
-            setAddress(data.display_name);
-            toast.success('Location filled');
-          } else {
-            setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-          }
+          const addressParts = [];
+          if (data.locality) addressParts.push(data.locality);
+          if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
+          if (data.city && data.city !== data.locality) addressParts.push(data.city);
+          
+          const fullAddress = addressParts.join(', ') || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          setAddress(fullAddress);
+          toast.success('Location detected');
         } catch {
+          // Fallback to Nominatim
           try {
             const response = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18`,
+              { headers: { 'User-Agent': 'UrbanAuto/1.0' } }
             );
             const data = await response.json();
-            
-            const addressParts = [];
-            if (data.locality) addressParts.push(data.locality);
-            if (data.principalSubdivision) addressParts.push(data.principalSubdivision);
-            if (data.city && data.city !== data.locality) addressParts.push(data.city);
-            if (data.countryName) addressParts.push(data.countryName);
-            
-            const fullAddress = addressParts.join(', ') || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-            setAddress(fullAddress);
-            toast.success('Location filled');
+            if (data.display_name) {
+              setAddress(data.display_name);
+              toast.success('Location detected');
+            } else {
+              setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+            }
           } catch {
             setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
           }
         }
-        
-        setFetchingLocation(false);
-        setLocationFetched(true);
-      },
-      () => {
-        setFetchingLocation(false);
-        setLocationFetched(true);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
-      }
-    );
-  };
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          // Start reverse geocoding immediately
+          getAddress(latitude, longitude);
+          setFetchingLocation(false);
+          setLocationFetched(true);
+        },
+        (error) => {
+          console.error('Location error:', error);
+          setFetchingLocation(false);
+          setLocationFetched(true);
+          toast.error('Could not fetch location automatically');
+        },
+        options
+      );
+    };
+
 
   const handleAddressFocus = async () => {
     if (address || fetchingLocation || locationFetched) return;
