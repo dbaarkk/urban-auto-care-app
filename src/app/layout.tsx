@@ -10,6 +10,14 @@ import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "Urban Auto | Premium Car Care in Raipur",
   description: "Raipur's premier modern mechanized car care brand. Professional car cleaning, detailing, and auto services.",
+  manifest: "/manifest.json",
+  themeColor: "#1e3a8a",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Urban Auto",
+  },
 };
 
 export default function RootLayout({
@@ -37,6 +45,19 @@ export default function RootLayout({
           data-debug="true"
           data-custom-data='{"appName": "UrbanAuto", "version": "1.0.0"}'
         />
+        <Script id="register-sw" strategy="afterInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                  console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                }, function(err) {
+                  console.log('ServiceWorker registration failed: ', err);
+                });
+              });
+            }
+          `}
+        </Script>
         <AuthProvider>
           {children}
           <BottomNav />
