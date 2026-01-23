@@ -2,12 +2,9 @@ workflows:
   android-aab:
     name: Urban Auto - Android AAB (Release)
     max_build_duration: 120
-    instance_type: mac_mini_m2
 
     environment:
-  vars:
-    NODE_VERSION: "22"
-  node: $NODE_VERSION
+      node: 22
 
     scripts:
       - name: Install dependencies
@@ -30,8 +27,3 @@ workflows:
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
       - android/app/build/outputs/apk/release/*.apk
-
-    publishing:
-      email:
-        recipients:
-          - theurbanauto@gmail.com
