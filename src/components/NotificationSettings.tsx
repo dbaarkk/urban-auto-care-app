@@ -7,14 +7,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Bell, BellOff, CheckCircle } from 'lucide-react';
 
 export const NotificationSettings = () => {
-  const { requestPermission, status } = useNativeNotifications();
+    const { registerNotifications, status } = useNativeNotifications();
 
-  const handleEnable = async () => {
-    const success = await requestPermission();
-    if (success) {
-      console.log('Notifications enabled successfully');
-    }
-  };
+    const handleEnable = async () => {
+      const success = await registerNotifications();
+      if (success) {
+        console.log('Notifications enabled successfully');
+      }
+    };
+
 
   return (
     <Card>
