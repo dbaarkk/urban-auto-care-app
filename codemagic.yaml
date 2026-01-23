@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - APK + AAB (Release)
+    name: Urban Auto - AAB + APK (Debug + Release)
     max_build_duration: 120
 
     environment:
@@ -20,13 +20,15 @@ workflows:
         script: |
           npx cap sync android
 
-      - name: Build Android AAB + APK (Release)
+      - name: Build Android (AAB + APK)
         script: |
           cd android
           chmod +x gradlew
           ./gradlew bundleRelease
+          ./gradlew assembleDebug
           ./gradlew assembleRelease
 
     artifacts:
       - android/app/build/outputs/bundle/release/*.aab
+      - android/app/build/outputs/apk/debug/*.apk
       - android/app/build/outputs/apk/release/*.apk
