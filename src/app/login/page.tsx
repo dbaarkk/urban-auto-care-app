@@ -99,25 +99,15 @@ export default function LoginPage() {
           {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
         </div>
 
-        <div className="text-right">
-          <button 
-            type="button"
-            onClick={() => toast.info('Password reset feature will send you an email. Contact support for now.')}
-            className="text-primary text-sm font-medium hover:underline"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary text-white py-3.5 rounded-xl font-semibold text-sm mt-2 hover:bg-primary/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            Forgot Password?
+            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+            {loading ? 'Logging in...' : 'Login'}
           </button>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-primary text-white py-3.5 rounded-xl font-semibold text-sm mt-2 hover:bg-primary/90 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
+        </form>
 
       <p className="text-center text-sm text-gray-500 mt-8">
         Don&apos;t have an account?{' '}
