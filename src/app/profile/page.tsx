@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { useNativeNotifications } from '@/hooks/useNativeNotifications';
 import { ArrowLeft, User, Mail, Phone, MapPin, LogOut, ChevronRight, HelpCircle, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
@@ -10,6 +11,7 @@ import { toast } from 'sonner';
 
 export default function ProfilePage() {
   const { user, isLoading, logout, bookings } = useAuth();
+  const { registerNotifications } = useNativeNotifications();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,8 +28,8 @@ export default function ProfilePage() {
     );
   }
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast.success('Logged out successfully');
     router.replace('/signup');
   };
@@ -39,17 +41,12 @@ export default function ProfilePage() {
     { icon: Info, label: 'Privacy Policy', href: '/privacy-policy' },
   ];
 
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      toast.error('Notifications not supported');
-      return;
-    }
-
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
+  const handleEnableNotifications = async () => {
+    const success = await registerNotifications();
+    if (success) {
       toast.success('Notifications enabled!');
     } else {
-      toast.error('Notification permission denied');
+      toast.error('Failed to enable notifications. Ensure you are on a native device.');
     }
   };
 
@@ -130,7 +127,7 @@ export default function ProfilePage() {
 
           <div className="mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
             <button
-              onClick={requestNotificationPermission}
+              onClick={handleEnableNotifications}
               className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors border-b border-gray-100"
             >
               <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
