@@ -121,60 +121,93 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user]);
 
-  const signup = async (name: string, email: string, phone: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      if (!data.user) throw new Error('Signup failed');
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: data.user.id,
-            email,
-            full_name: name,
-            phone: phone,
-          }
-        ]);
-
-      if (profileError) throw profileError;
-
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const login = async (email: string, password: string) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-      if (!data.user) throw new Error('Login failed');
-
-      const profile = await fetchProfile(data.user.id);
-      if (profile) {
-        setUser({
-          id: profile.id,
-          name: profile.full_name,
-          email: profile.email,
-          phone: profile.phone
+    const signup = async (name: string, email: string, phone: string, password: string) => {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
         });
-      }
+  
+        if (error) throw error;
+        if (!data.user) throw new Error('Signup failed');
+  
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email,
+              full_name: name,
+              phone: phone,
+            }
+          ]);
+  
+        if (profileError) throw profileError;
 
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  };
+        // Manually set user state for instant access even if email isn't confirmed yet
+        setUser({
+          id: data.user.id,
+          name: name,
+          email: email,
+          phone: phone
+        });
+  
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    };
+  
+    const login = async (email: string, password: string) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+  
+        if (error) {
+          // If email is not confirmed but password is correct, Supabase returns this error
+          // We bypass this to allow instant login as requested
+          if (error.message.toLowerCase().includes('email not confirmed')) {
+            // We need the user ID to fetch the profile. 
+            // We can't get it from signInWithPassword if it fails.
+            // But we can try to fetch the profile by email since RLS is disabled.
+            const { data: profileData, error: profileError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('email', email)
+              .single();
+            
+            if (profileError || !profileData) throw new Error('Email not confirmed and profile not found');
+            
+            setUser({
+              id: profileData.id,
+              name: profileData.full_name,
+              email: profileData.email,
+              phone: profileData.phone
+            });
+            return { success: true };
+          }
+          throw error;
+        }
+
+        if (!data.user) throw new Error('Login failed');
+  
+        const profile = await fetchProfile(data.user.id);
+        if (profile) {
+          setUser({
+            id: profile.id,
+            name: profile.full_name,
+            email: profile.email,
+            phone: profile.phone
+          });
+        }
+  
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    };
 
   const logout = async () => {
     await supabase.auth.signOut();
