@@ -3,10 +3,13 @@
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { MapPin, Search, Droplet, Sparkles, Wrench, Settings, ChevronRight, Phone } from 'lucide-react';
+import { MapPin, Search, Droplet, Sparkles, Wrench, Settings, ChevronRight, Phone, Bell } from 'lucide-react';
 import { services, serviceCategories } from '@/lib/services-data';
 import { motion } from 'framer-motion';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { NativeLocationPicker } from '@/components/NativeLocationPicker';
+import { useNativeNotifications } from '@/hooks/useNativeNotifications';
+import { toast } from 'sonner';
 
 const categoryIcons: Record<string, React.ReactNode> = {
   'oil-change': <Droplet className="w-6 h-6" />,
@@ -19,12 +22,39 @@ const categoryIcons: Record<string, React.ReactNode> = {
 export default function HomePage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { requestPermission } = useNativeNotifications();
+  const [currentLocation, setCurrentLocation] = useState<string>('Select Location');
+  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.replace('/signup');
     }
+    
+    // Check for saved address
+    const saved = localStorage.getItem('ua_saved_address');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        setCurrentLocation(data.suburb || data.city || 'Location Set');
+      } catch (e) {}
+    }
   }, [isLoading, user, router]);
+
+  const handleAddressSaved = (fullAddress: string, data: any) => {
+    setCurrentLocation(data.suburb || data.city || 'Location Set');
+    toast.success('Location updated successfully!');
+    setShowPicker(false);
+  };
+
+  const handleNotifyRequest = async () => {
+    const granted = await requestPermission();
+    if (granted) {
+      toast.success('Notifications enabled!');
+    } else {
+      toast.error('Notification permission denied');
+    }
+  };
 
   if (isLoading || !user) {
     return (
@@ -48,21 +78,43 @@ export default function HomePage() {
               height={40}
               className="rounded-lg"
             />
-            <div>
-              <h1 className="text-white font-bold text-lg leading-tight">URBAN AUTO</h1>
-              <div className="flex items-center gap-1 text-white/80 text-xs">
-                <MapPin className="w-3 h-3" />
-                <span>Raipur</span>
+              <div>
+                <h1 className="text-white font-bold text-lg leading-tight">URBAN AUTO</h1>
+                <div 
+                  className="flex items-center gap-1 text-white/80 text-xs cursor-pointer"
+                  onClick={() => setShowPicker(true)}
+                >
+                  <MapPin className="w-3 h-3" />
+                  <span className="line-clamp-1 max-w-[150px]">{currentLocation}</span>
+                </div>
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleNotifyRequest}
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
+              >
+                <Bell className="w-5 h-5 text-white" />
+              </button>
+              <a 
+                href="tel:+918889822220"
+                className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
+              >
+                <Phone className="w-5 h-5 text-white" />
+              </a>
+            </div>
           </div>
-          <a 
-            href="tel:+918889822220"
-            className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center"
-          >
-            <Phone className="w-5 h-5 text-white" />
-          </a>
-        </div>
+
+          {showPicker && (
+            <div className="mt-4 bg-white rounded-2xl p-4 shadow-lg animate-in slide-in-from-top duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="font-bold text-gray-900">Set Service Location</h3>
+                <button onClick={() => setShowPicker(false)} className="text-gray-400 text-xs font-bold">CLOSE</button>
+              </div>
+              <NativeLocationPicker onAddressSaved={handleAddressSaved} />
+            </div>
+          )}
+
 
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
