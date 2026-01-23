@@ -1,39 +1,84 @@
 'use client';
 
-import { useState, useCallback } from 'react';
-import { PushNotifications } from '@capacitor/push-notifications';
+import { useState, useCallback, useEffect } from 'react';
+import { PushNotifications, Token, ActionPerformed, PushNotificationSchema } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/lib/auth-context';
 
 export const useNativeNotifications = () => {
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState<'prompt' | 'granted' | 'denied' | 'error' | 'loading'>('loading');
+  const [token, setToken] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  const requestPermission = useCallback(async () => {
-    if (!Capacitor.isNativePlatform()) {
-      console.warn('Push notifications are only available on native platforms');
-      return false;
-    }
-
-    try {
-      let permStatus = await PushNotifications.checkPermissions();
-
-      if (permStatus.receive === 'prompt') {
-        permStatus = await PushNotifications.requestPermissions();
-      }
-
-      if (permStatus.receive === 'granted') {
-        await PushNotifications.register();
-        setStatus('granted');
-        return true;
-      } else {
-        setStatus('denied');
-        return false;
-      }
-    } catch (err) {
-      console.error('Error requesting notification permission', err);
-      setStatus('error');
-      return false;
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      PushNotifications.checkPermissions().then((res) => {
+        setStatus(res.receive as any);
+      });
+    } else {
+      setStatus('denied');
     }
   }, []);
 
-  return { requestPermission, status };
+  const saveToken = async (deviceToken: string) => {
+    if (!user) return;
+    
+    try {
+      const { error } = await supabase
+        .from('device_tokens')
+        .upsert({
+          user_id: user.id,
+          token: deviceToken,
+          platform: Capacitor.getPlatform(),
+        }, { onConflict: 'token' });
+
+      if (error) console.error('Error saving device token:', error);
+    } catch (err) {
+      console.error('Failed to save device token', err);
+    }
+  };
+
+  const registerNotifications = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) return false;
+
+    try {
+      // 1. Request Permissions
+      let permStatus = await PushNotifications.requestPermissions();
+      setStatus(permStatus.receive as any);
+
+      if (permStatus.receive !== 'granted') return false;
+
+      // 2. Register
+      await PushNotifications.register();
+
+      // 3. Handle Events
+      PushNotifications.addListener('registration', (token: Token) => {
+        console.log('Push registration success, token: ' + token.value);
+        setToken(token.value);
+        saveToken(token.value);
+      });
+
+      PushNotifications.addListener('registrationError', (error: any) => {
+        console.error('Error on registration: ' + JSON.stringify(error));
+        setStatus('error');
+      });
+
+      PushNotifications.addListener('pushNotificationReceived', (notification: PushNotificationSchema) => {
+        console.log('Push received: ' + JSON.stringify(notification));
+      });
+
+      PushNotifications.addListener('pushNotificationActionPerformed', (action: ActionPerformed) => {
+        console.log('Push action performed: ' + JSON.stringify(action));
+      });
+
+      return true;
+    } catch (err) {
+      console.error('Error setting up push notifications', err);
+      setStatus('error');
+      return false;
+    }
+  }, [user]);
+
+  return { registerNotifications, status, token };
 };
