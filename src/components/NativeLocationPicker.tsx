@@ -21,22 +21,23 @@ interface NativeLocationPickerProps {
 }
 
 export const NativeLocationPicker: React.FC<NativeLocationPickerProps> = ({ onAddressSaved }) => {
-  const { getCurrentLocation, loading, error } = useNativeLocation();
-  const [showModal, setShowModal] = useState(false);
-  const [addressData, setAddressData] = useState<AddressData | null>(null);
-  const [houseDetails, setHouseDetails] = useState('');
-  const [landmark, setLandmark] = useState('');
+    const { getCurrentLocation, loading, error, accuracyWarning } = useNativeLocation();
+    const [showModal, setShowModal] = useState(false);
+    const [addressData, setAddressData] = useState<AddressData | null>(null);
+    const [houseDetails, setHouseDetails] = useState('');
+    const [landmark, setLandmark] = useState('');
 
-  const handleUseLocation = async () => {
-    setShowModal(true);
-  };
+    const handleUseLocation = async () => {
+      setShowModal(true);
+    };
 
-  const startFetchingLocation = async () => {
-    const data = await getCurrentLocation();
-    if (data) {
-      setAddressData(data);
-    }
-  };
+    const startFetchingLocation = async () => {
+      const data = await getCurrentLocation();
+      if (data) {
+        setAddressData(data);
+      }
+    };
+
 
   const handleConfirm = () => {
     if (!addressData) return;
@@ -91,17 +92,25 @@ export const NativeLocationPicker: React.FC<NativeLocationPickerProps> = ({ onAd
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
                 <Navigation className={`w-8 h-8 text-primary ${loading ? 'animate-pulse' : ''}`} />
               </div>
-              {loading ? (
-                <div className="space-y-2">
-                  <p className="font-medium">Fetching precise location...</p>
-                  <p className="text-sm text-muted-foreground">This may take a few seconds as we verify accuracy.</p>
-                  <Loader2 className="w-4 h-4 animate-spin mx-auto mt-2" />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Your privacy is important. We only use your location when you're using the app.
-                </p>
-              )}
+                {loading ? (
+                  <div className="space-y-2">
+                    <p className="font-medium">Fetching precise location...</p>
+                    <p className="text-sm text-muted-foreground">This may take a few seconds as we verify accuracy.</p>
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto mt-2" />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {accuracyWarning && (
+                      <div className="bg-yellow-50 text-yellow-800 p-3 rounded-md text-sm mb-4">
+                        {accuracyWarning}
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      Your privacy is important. We only use your location when you're using the app.
+                    </p>
+                  </div>
+                )}
+
               {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
           ) : (
