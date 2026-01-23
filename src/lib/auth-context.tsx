@@ -123,40 +123,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signup = async (name: string, email: string, phone: string, password: string) => {
       try {
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
+        // Call the custom API route to create user with auto-confirmation
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone, password }),
         });
-  
-        if (error) throw error;
-        if (!data.user) throw new Error('Signup failed');
-  
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([
-            {
-              id: data.user.id,
-              email,
-              full_name: name,
-              phone: phone,
-            }
-          ]);
-  
-        if (profileError) throw profileError;
 
-        // Manually set user state for instant access even if email isn't confirmed yet
-        setUser({
-          id: data.user.id,
-          name: name,
-          email: email,
-          phone: phone
-        });
-  
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Signup failed');
+
+        // After successful creation and auto-confirmation, log the user in to establish session
+        const loginResult = await login(email, password);
+        if (!loginResult.success) throw new Error(loginResult.error || 'Login after signup failed');
+
         return { success: true };
       } catch (error: any) {
         return { success: false, error: error.message };
       }
     };
+
   
     const login = async (email: string, password: string) => {
       try {
