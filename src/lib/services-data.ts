@@ -96,14 +96,15 @@ export const services: Service[] = [
     category: 'repair',
     features: ['Frame Straightening', 'Panel Replacement', 'Structural Repair', 'Airbag Replacement', 'Full Restoration']
   },
-  {
-    id: 'car-dealership',
-    name: 'Car Dealership',
-    subtitle: 'Buy & Sell Quality Pre-Owned Vehicles',
-    image: '/car-dealership-urban.jpg',
-    category: 'general',
-    features: ['Verified Vehicles', 'Documentation Help', 'Fair Pricing', 'Inspection Report', 'Transfer Assistance']
-  }
+    {
+      id: 'car-dealership',
+      name: 'Car Dealership',
+      subtitle: 'Buy & Sell Quality Pre-Owned Vehicles',
+      image: '/car-dealership-hd.jpg',
+      category: 'general',
+      features: ['Verified Vehicles', 'Documentation Help', 'Fair Pricing', 'Inspection Report', 'Transfer Assistance']
+    }
+
 ];
 
 export const serviceCategories = [
