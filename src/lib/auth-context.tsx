@@ -59,77 +59,83 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
-  const refreshBookings = async () => {
-    if (!user) return;
-    const { data, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const refreshBookings = async () => {
+      if (!user) return;
+      try {
+        const { data, error } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setBookings(data.map(b => ({
-        id: b.id,
-        userId: b.user_id,
-        serviceName: b.service_name,
-        bookingDate: b.booking_date,
-        preferredDateTime: b.preferred_date_time || b.booking_date,
-        vehicleType: b.vehicle_type || 'Unknown',
-        vehicleNumber: b.vehicle_number,
-        address: b.address || '',
-        notes: b.notes,
-        status: b.status || 'Pending',
-        totalAmount: b.total_amount,
-        createdAt: b.created_at
-      })));
-    }
-  };
-
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (profile) {
-          setUser({
-            id: profile.id,
-            name: profile.full_name,
-            email: profile.email,
-            phone: profile.phone
-          });
+        if (error) throw error;
+        
+        if (data) {
+          setBookings(data.map(b => ({
+            id: b.id,
+            userId: b.user_id,
+            serviceName: b.service_name,
+            bookingDate: b.booking_date,
+            preferredDateTime: b.preferred_date_time || b.booking_date,
+            vehicleType: b.vehicle_type || 'Unknown',
+            vehicleNumber: b.vehicle_number,
+            address: b.address || '',
+            notes: b.notes,
+            status: b.status || 'Pending',
+            totalAmount: b.total_amount,
+            createdAt: b.created_at
+          })));
         }
+      } catch (error) {
+        console.error('Error refreshing bookings:', error);
       }
-      setIsLoading(false);
     };
 
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (profile) {
-          setUser({
-            id: profile.id,
-            name: profile.full_name,
-            email: profile.email,
-            phone: profile.phone
-          });
+    useEffect(() => {
+      const getSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const profile = await fetchProfile(session.user.id);
+          if (profile) {
+            setUser({
+              id: profile.id,
+              name: profile.full_name,
+              email: profile.email,
+              phone: profile.phone
+            });
+          }
         }
-      } else {
-        setUser(null);
-        setBookings([]);
+        setIsLoading(false);
+      };
+
+      getSession();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          const profile = await fetchProfile(session.user.id);
+          if (profile) {
+            setUser({
+              id: profile.id,
+              name: profile.full_name,
+              email: profile.email,
+              phone: profile.phone
+            });
+          }
+        } else {
+          setUser(null);
+          setBookings([]);
+        }
+        setIsLoading(false);
+      });
+
+      return () => subscription.unsubscribe();
+    }, []);
+
+    useEffect(() => {
+      if (user) {
+        refreshBookings();
       }
-      setIsLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      refreshBookings();
-    }
-  }, [user]);
+    }, [user?.id]); // Use user.id to avoid unnecessary refreshes
 
     const signup = async (name: string, email: string, phone: string, password: string) => {
       try {
@@ -151,7 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!response.ok) throw new Error(result.error || 'Signup failed');
 
-        // Optimistically set user state if the API returned it
         if (result.user) {
           setUser({
             id: result.user.id,
@@ -161,9 +166,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
 
-        // Trigger login in background to establish session, but don't block the UI transition
-        // if we already have the user state set optimistically.
-        // This makes the transition to dashboard feel "instant".
         login(email, password).catch(err => console.error('Background login error:', err));
         
         return { success: true };
@@ -173,14 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
-  
     const login = async (email: string, password: string) => {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
-  
+    
         if (error) {
           if (error.message.toLowerCase().includes('email not confirmed')) {
             const { data: profileData, error: profileError } = await supabase
@@ -204,7 +205,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (!data.user) throw new Error('Login failed');
     
-        // Optimistically set user from metadata first
         setUser({
           id: data.user.id,
           name: data.user.user_metadata?.full_name || 'User',
@@ -212,7 +212,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: data.user.user_metadata?.phone || ''
         });
 
-        // Fetch full profile in background but don't block login success if we have metadata
         fetchProfile(data.user.id).then(profile => {
           if (profile) {
             setUser({
@@ -241,6 +240,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return { success: false, error: 'Not logged in' };
 
     try {
+      // Create a date object from preferredDateTime to ensure booking_date is valid
+      let bookingDateISO = new Date().toISOString();
+      if (bookingData.preferredDateTime) {
+        const [d, t] = bookingData.preferredDateTime.split(' ');
+        if (d && t) {
+          try {
+            bookingDateISO = new Date(`${d}T${t}`).toISOString();
+          } catch (e) {
+            console.warn('Could not parse preferred date time for booking_date:', e);
+          }
+        }
+      }
+
       const { data, error } = await supabase
         .from('bookings')
         .insert([
@@ -251,6 +263,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             vehicle_number: bookingData.vehicleNumber,
             address: bookingData.address,
             preferred_date_time: bookingData.preferredDateTime,
+            booking_date: bookingDateISO,
             notes: bookingData.notes,
             status: 'Pending',
             total_amount: bookingData.totalAmount || 0,
@@ -260,13 +273,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       
-      // Optimistically update local state for "instant" feel
       if (data && data[0]) {
         const newBooking: Booking = {
           id: data[0].id,
           userId: data[0].user_id,
           serviceName: data[0].service_name,
-          bookingDate: data[0].booking_date || new Date().toISOString(),
+          bookingDate: data[0].booking_date,
           preferredDateTime: data[0].preferred_date_time,
           vehicleType: data[0].vehicle_type,
           vehicleNumber: data[0].vehicle_number,
@@ -284,7 +296,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     } catch (error: any) {
       console.error('Add booking error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message || 'Failed to create booking' };
     }
   };
 
