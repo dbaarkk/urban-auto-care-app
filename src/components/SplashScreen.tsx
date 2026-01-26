@@ -11,19 +11,17 @@ export default function SplashScreen() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading) {
-      const timer = setTimeout(() => {
-        setShow(false);
+    useEffect(() => {
+      if (!isLoading) {
+        // Instant redirect when loading is finished
         if (user) {
           router.replace('/home');
         } else {
           router.replace('/signup');
         }
-      }, 1800);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, user, router]);
+        setShow(false);
+      }
+    }, [isLoading, user, router]);
 
   if (!show) return null;
 
