@@ -3,18 +3,19 @@
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getServiceById, services } from '@/lib/services-data';
+import { services } from '@/lib/services-data';
 import { ArrowLeft, Calendar, MapPin, Car, FileText, Check, Loader2 } from 'lucide-react';
-import { useState, useEffect, Suspense, useRef } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
+import LocationPicker from '@/components/LocationPicker';
 
 function BookingContent() {
-  const { user, isLoading, addBooking } = useAuth();
+  const { user, isLoading, addBooking, updateLocation } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const serviceId = searchParams.get('service');
   
-  const [selectedService, setSelectedService] = useState(serviceId || '');
+  const [selectedServices, setSelectedServices] = useState<string[]>(serviceId ? [serviceId] : []);
   const [vehicleType, setVehicleType] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
   const [address, setAddress] = useState('');
@@ -25,9 +26,6 @@ function BookingContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPicker, setShowPicker] = useState(false);
 
-  const { updateLocation } = useAuth();
-  const service = getServiceById(selectedService);
-
   useEffect(() => {
     if (user?.locationAddress) {
       setAddress(user.locationAddress);
@@ -37,16 +35,17 @@ function BookingContent() {
   const handleLocationSelect = async (newAddress: string, coords: { lat: number; lng: number }) => {
     setAddress(newAddress);
     setShowPicker(false);
-    
-    // Bind location to account as requested
     await updateLocation(newAddress, coords);
     toast.success('Location updated');
   };
 
-  const handleAddressClick = () => {
-    setShowPicker(true);
+  const toggleService = (id: string) => {
+    setSelectedServices(prev => 
+      prev.includes(id) 
+        ? prev.filter(s => s !== id) 
+        : [...prev, id]
+    );
   };
-
 
   if (isLoading || !user) {
     return (
@@ -60,7 +59,7 @@ function BookingContent() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!selectedService) newErrors.service = 'Please select a service';
+    if (selectedServices.length === 0) newErrors.service = 'Please select at least one service';
     if (!vehicleType) newErrors.vehicleType = 'Please select vehicle type';
     if (!address.trim()) newErrors.address = 'Address is required';
     if (!date) newErrors.date = 'Please select a date';
@@ -73,17 +72,20 @@ function BookingContent() {
     if (!validate()) return;
 
     setSubmitting(true);
-    
     try {
+      const serviceNames = selectedServices
+        .map(id => services.find(s => s.id === id)?.name)
+        .filter(Boolean)
+        .join(', ');
+
       const result = await addBooking({
-        serviceId: selectedService,
-        serviceName: service?.name || '',
+        serviceName: serviceNames,
         vehicleType,
         vehicleNumber,
         address,
         preferredDateTime: `${date} ${time}`,
         notes,
-        totalAmount: 0, // Prices not defined in metadata yet
+        totalAmount: 0,
       });
 
       if (result.success) {
@@ -115,46 +117,32 @@ function BookingContent() {
       </header>
 
       <div className="px-4 py-4 space-y-4">
-        {service && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex gap-3">
-              <Image
-                src={service.image}
-                alt={service.name}
-                width={70}
-                height={70}
-                className="rounded-xl object-cover"
-              />
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">{service.name}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{service.subtitle}</p>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {service.features.slice(0, 3).map((f) => (
-                    <span key={f} className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full">
-                      {f}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <Car className="w-4 h-4 text-primary" />
-            Select Service
+            <Check className="w-4 h-4 text-primary" />
+            Add services
           </h3>
-          <select
-            value={selectedService}
-            onChange={(e) => setSelectedService(e.target.value)}
-            className={`w-full px-4 py-3 rounded-xl border ${errors.service ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm outline-none`}
-          >
-            <option value="">Choose a service</option>
+          <div className="grid grid-cols-2 gap-2">
             {services.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
+              <button
+                key={s.id}
+                onClick={() => toggleService(s.id)}
+                className={`p-3 rounded-xl border text-left transition-all ${
+                  selectedServices.includes(s.id)
+                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                    : 'border-gray-100 bg-gray-50 hover:bg-gray-100'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-[10px] font-bold ${selectedServices.includes(s.id) ? 'text-primary' : 'text-gray-900'}`}>
+                    {s.name}
+                  </span>
+                  {selectedServices.includes(s.id) && <Check className="w-3 h-3 text-primary" />}
+                </div>
+                <p className="text-[9px] text-gray-500 line-clamp-1">{s.subtitle}</p>
+              </button>
             ))}
-          </select>
+          </div>
           {errors.service && <p className="text-red-500 text-xs mt-1">{errors.service}</p>}
         </div>
 
@@ -198,7 +186,7 @@ function BookingContent() {
             Service Address
           </h3>
           <div 
-            onClick={handleAddressClick}
+            onClick={() => setShowPicker(true)}
             className={`w-full px-4 py-3 rounded-xl border ${errors.address ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm cursor-pointer min-h-[80px]`}
           >
             {address ? (
@@ -258,7 +246,7 @@ function BookingContent() {
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any specific requirements or issues with your vehicle..."
+            placeholder="Any specific requirements..."
             rows={3}
             className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm outline-none resize-none"
           />
@@ -281,7 +269,6 @@ function BookingContent() {
             </>
           )}
         </button>
-
         <div className="h-20" />
       </div>
     </div>
