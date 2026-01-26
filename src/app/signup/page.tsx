@@ -59,8 +59,10 @@ export default function SignupPage() {
     
     if (result.success) {
       toast.success('Account created successfully!');
-      router.replace('/home');
-      // No setLoading(false) here to avoid UI flickers during redirect
+      // Give the session a tiny moment to propagate before redirecting
+      setTimeout(() => {
+        router.replace('/home');
+      }, 500);
     } else {
       setLoading(false);
       toast.error(result.error || 'Failed to create account');
