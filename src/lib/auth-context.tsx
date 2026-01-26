@@ -135,15 +135,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           result = await response.json();
         } else {
           const text = await response.text();
-          throw new Error(text || 'Server error occurred');
+          console.error('Non-JSON response from signup API:', text);
+          throw new Error(text || `Server error (Status: ${response.status})`);
         }
 
         if (!response.ok) throw new Error(result.error || 'Signup failed');
 
-        // After successful creation and auto-confirmation, log the user in to establish session
-        const loginResult = await login(email, password);
-        if (!loginResult.success) throw new Error(loginResult.error || 'Login after signup failed');
+        // Optimistically set user state if the API returned it
+        if (result.user) {
+          setUser({
+            id: result.user.id,
+            name: result.user.name,
+            email: result.user.email,
+            phone: result.user.phone
+          });
+        }
 
+        // Trigger login in background to establish session, but don't block the UI transition
+        // if we already have the user state set optimistically.
+        // This makes the transition to dashboard feel "instant".
+        login(email, password).catch(err => console.error('Background login error:', err));
+        
         return { success: true };
       } catch (error: any) {
         console.error('Signup error:', error);
@@ -181,25 +193,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         if (!data.user) throw new Error('Login failed');
-  
-        const profile = await fetchProfile(data.user.id);
-        if (profile) {
-          setUser({
-            id: profile.id,
-            name: profile.full_name,
-            email: profile.email,
-            phone: profile.phone
-          });
-        } else {
-          // If session exists but profile is missing, try to create it or handle gracefully
-          setUser({
-            id: data.user.id,
-            name: data.user.user_metadata?.full_name || 'User',
-            email: data.user.email || email,
-            phone: data.user.user_metadata?.phone || ''
-          });
-        }
-  
+    
+        // Optimistically set user from metadata first
+        setUser({
+          id: data.user.id,
+          name: data.user.user_metadata?.full_name || 'User',
+          email: data.user.email || email,
+          phone: data.user.user_metadata?.phone || ''
+        });
+
+        // Fetch full profile in background but don't block login success if we have metadata
+        fetchProfile(data.user.id).then(profile => {
+          if (profile) {
+            setUser({
+              id: profile.id,
+              name: profile.full_name,
+              email: profile.email,
+              phone: profile.phone
+            });
+          }
+        });
+    
         return { success: true };
       } catch (error: any) {
         console.error('Login error:', error);
