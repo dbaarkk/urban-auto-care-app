@@ -9,6 +9,8 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  locationAddress?: string;
+  locationCoords?: { lat: number; lng: number };
 }
 
 export interface Booking {
@@ -34,6 +36,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   bookings: Booking[];
   refreshBookings: () => Promise<void>;
+  updateLocation: (address: string, coords: { lat: number; lng: number }) => Promise<{ success: boolean; error?: string }>;
   addBooking: (booking: Omit<Booking, 'id' | 'userId' | 'createdAt' | 'status'>) => Promise<{ success: boolean; error?: string }>;
   cancelBooking: (bookingId: string) => Promise<{ success: boolean; error?: string }>;
 }
@@ -44,6 +47,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const mapProfileToUser = (profile: any): User => ({
+    id: profile.id,
+    name: profile.full_name,
+    email: profile.email,
+    phone: profile.phone,
+    locationAddress: profile.location_address,
+    locationCoords: profile.location_coords
+  });
 
   const fetchProfile = async (userId: string) => {
     const { data, error } = await supabase
@@ -59,105 +71,127 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return data;
   };
 
-    const refreshBookings = async () => {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false });
+  const updateLocation = async (address: string, coords: { lat: number; lng: number }) => {
+    if (!user) return { success: false, error: 'Not logged in' };
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          location_address: address,
+          location_coords: coords,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
 
-        if (error) throw error;
-        
-        if (data) {
-          setBookings(data.map(b => ({
-            id: b.id,
-            userId: b.user_id,
-            serviceName: b.service_name,
-            bookingDate: b.booking_date,
-            preferredDateTime: b.preferred_date_time || b.booking_date,
-            vehicleType: b.vehicle_type || 'Unknown',
-            vehicleNumber: b.vehicle_number,
-            address: b.address || '',
-            notes: b.notes,
-            status: b.status || 'Pending',
-            totalAmount: b.total_amount,
-            createdAt: b.created_at
-          })));
-        }
-      } catch (error) {
-        console.error('Error refreshing bookings:', error);
+      if (error) throw error;
+
+      setUser(prev => prev ? {
+        ...prev,
+        locationAddress: address,
+        locationCoords: coords
+      } : null);
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Error updating location:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const refreshBookings = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      if (data) {
+        setBookings(data.map(b => ({
+          id: b.id,
+          userId: b.user_id,
+          serviceName: b.service_name,
+          bookingDate: b.booking_date,
+          preferredDateTime: b.preferred_date_time || b.booking_date,
+          vehicleType: b.vehicle_type || 'Unknown',
+          vehicleNumber: b.vehicle_number,
+          address: b.address || '',
+          notes: b.notes,
+          status: b.status || 'Pending',
+          totalAmount: b.total_amount,
+          createdAt: b.created_at
+        })));
       }
+    } catch (error) {
+      console.error('Error refreshing bookings:', error);
+    }
+  };
+
+  useEffect(() => {
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (profile) {
+          setUser(mapProfileToUser(profile));
+        }
+      }
+      setIsLoading(false);
     };
 
-    useEffect(() => {
-      const getSession = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          if (profile) {
-            setUser({
-              id: profile.id,
-              name: profile.full_name,
-              email: profile.email,
-              phone: profile.phone
-            });
-          }
-        }
-        setIsLoading(false);
-      };
+    getSession();
 
-      getSession();
-
-      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          if (profile) {
-            setUser({
-              id: profile.id,
-              name: profile.full_name,
-              email: profile.email,
-              phone: profile.phone
-            });
-          }
-        } else {
-          setUser(null);
-          setBookings([]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        if (profile) {
+          setUser(mapProfileToUser(profile));
         }
-        setIsLoading(false);
+      } else {
+        setUser(null);
+        setBookings([]);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      refreshBookings();
+    }
+  }, [user?.id]);
+
+  const signup = async (name: string, email: string, phone: string, password: string) => {
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, phone, password }),
       });
 
-      return () => subscription.unsubscribe();
-    }, []);
-
-    useEffect(() => {
-      if (user) {
-        refreshBookings();
+      let result;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response from signup API:', text);
+        throw new Error(text || `Server error (Status: ${response.status})`);
       }
-    }, [user?.id]); // Use user.id to avoid unnecessary refreshes
 
-    const signup = async (name: string, email: string, phone: string, password: string) => {
-      try {
-        const response = await fetch('/api/auth/signup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, email, phone, password }),
-        });
+      if (!response.ok) throw new Error(result.error || 'Signup failed');
 
-        let result;
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          result = await response.json();
+      if (result.user) {
+        const profile = await fetchProfile(result.user.id);
+        if (profile) {
+          setUser(mapProfileToUser(profile));
         } else {
-          const text = await response.text();
-          console.error('Non-JSON response from signup API:', text);
-          throw new Error(text || `Server error (Status: ${response.status})`);
-        }
-
-        if (!response.ok) throw new Error(result.error || 'Signup failed');
-
-        if (result.user) {
           setUser({
             id: result.user.id,
             name: result.user.name,
@@ -165,70 +199,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             phone: result.user.phone
           });
         }
-
-        login(email, password).catch(err => console.error('Background login error:', err));
-        
-        return { success: true };
-      } catch (error: any) {
-        console.error('Signup error:', error);
-        return { success: false, error: error.message || 'An unexpected error occurred' };
       }
-    };
 
-    const login = async (email: string, password: string) => {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-    
-        if (error) {
-          if (error.message.toLowerCase().includes('email not confirmed')) {
-            const { data: profileData, error: profileError } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('email', email)
-              .maybeSingle();
-            
-            if (profileError || !profileData) throw new Error('Account not fully set up. Please try signing up again.');
-            
-            setUser({
-              id: profileData.id,
-              name: profileData.full_name,
-              email: profileData.email,
-              phone: profileData.phone
-            });
-            return { success: true };
-          }
-          throw error;
+      login(email, password).catch(err => console.error('Background login error:', err));
+      
+      return { success: true };
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      return { success: false, error: error.message || 'An unexpected error occurred' };
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+  
+      if (error) {
+        if (error.message.toLowerCase().includes('email not confirmed')) {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('email', email)
+            .maybeSingle();
+          
+          if (profileError || !profileData) throw new Error('Account not fully set up. Please try signing up again.');
+          
+          setUser(mapProfileToUser(profileData));
+          return { success: true };
         }
+        throw error;
+      }
 
-        if (!data.user) throw new Error('Login failed');
-    
+      if (!data.user) throw new Error('Login failed');
+  
+      const profile = await fetchProfile(data.user.id);
+      if (profile) {
+        setUser(mapProfileToUser(profile));
+      } else {
         setUser({
           id: data.user.id,
           name: data.user.user_metadata?.full_name || 'User',
           email: data.user.email || email,
           phone: data.user.user_metadata?.phone || ''
         });
-
-        fetchProfile(data.user.id).then(profile => {
-          if (profile) {
-            setUser({
-              id: profile.id,
-              name: profile.full_name,
-              email: profile.email,
-              phone: profile.phone
-            });
-          }
-        });
-    
-        return { success: true };
-      } catch (error: any) {
-        console.error('Login error:', error);
-        return { success: false, error: error.message || 'Invalid credentials' };
       }
-    };
+  
+      return { success: true };
+    } catch (error: any) {
+      console.error('Login error:', error);
+      return { success: false, error: error.message || 'Invalid credentials' };
+    }
+  };
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -240,7 +264,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return { success: false, error: 'Not logged in' };
 
     try {
-      // Create a date object from preferredDateTime to ensure booking_date is valid
       let bookingDateISO = new Date().toISOString();
       if (bookingData.preferredDateTime) {
         const [d, t] = bookingData.preferredDateTime.split(' ');
@@ -324,6 +347,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout, 
       bookings, 
       refreshBookings,
+      updateLocation,
       addBooking, 
       cancelBooking 
     }}>
