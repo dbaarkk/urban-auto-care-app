@@ -46,8 +46,9 @@ export default function LoginPage() {
     
     if (result.success) {
       toast.success('Welcome back!');
-      router.replace('/home');
-      // No setLoading(false) here to avoid UI flickers during redirect
+      setTimeout(() => {
+        router.replace('/home');
+      }, 300);
     } else {
       setLoading(false);
       toast.error(result.error || 'Login failed');
