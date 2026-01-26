@@ -160,9 +160,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          if (profile) {
-            setUser(mapProfileToUser(profile));
+          // Only fetch if user is not already set or ID changed
+          if (!user || user.id !== session.user.id) {
+            const profile = await fetchProfile(session.user.id);
+            if (profile) {
+              setUser(mapProfileToUser(profile));
+            } else {
+              setUser({
+                id: session.user.id,
+                name: session.user.user_metadata?.full_name || 'User',
+                email: session.user.email || '',
+                phone: session.user.user_metadata?.phone || ''
+              });
+            }
           }
         } else {
           setUser(null);
@@ -183,48 +193,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user?.id]);
 
-  const signup = async (name: string, email: string, phone: string, password: string) => {
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, password }),
-      });
-
-      let result;
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        result = await response.json();
-      } else {
-        const text = await response.text();
-        console.error('Non-JSON response from signup API:', text);
-        throw new Error(text || `Server error (Status: ${response.status})`);
-      }
-
-      if (!response.ok) throw new Error(result.error || 'Signup failed');
-
-      if (result.user) {
-        const profile = await fetchProfile(result.user.id);
-        if (profile) {
-          setUser(mapProfileToUser(profile));
+    const signup = async (name: string, email: string, phone: string, password: string) => {
+      try {
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone, password }),
+        });
+  
+        let result;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json();
         } else {
-          setUser({
-            id: result.user.id,
-            name: result.user.name,
-            email: result.user.email,
-            phone: result.user.phone
-          });
+          const text = await response.text();
+          console.error('Non-JSON response from signup API:', text);
+          throw new Error('Server returned an invalid response');
         }
+  
+        if (!response.ok) throw new Error(result.error || 'Signup failed');
+  
+        // Immediately log in to establish session
+        const loginResult = await login(email, password);
+        
+        if (!loginResult.success) {
+          // If login fails but user was created, we still have a problem
+          // But we can try setting the user state manually as fallback
+          if (result.user) {
+            setUser({
+              id: result.user.id,
+              name: result.user.name,
+              email: result.user.email,
+              phone: result.user.phone
+            });
+            return { success: true };
+          }
+          throw new Error(loginResult.error || 'Failed to log in after account creation');
+        }
+        
+        return { success: true };
+      } catch (error: any) {
+        console.error('Signup error:', error);
+        return { success: false, error: error.message || 'An unexpected error occurred' };
       }
-
-      login(email, password).catch(err => console.error('Background login error:', err));
-      
-      return { success: true };
-    } catch (error: any) {
-      console.error('Signup error:', error);
-      return { success: false, error: error.message || 'An unexpected error occurred' };
-    }
-  };
+    };
 
   const login = async (email: string, password: string) => {
     try {
@@ -251,6 +263,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!data.user) throw new Error('Login failed');
   
+      // If user is already set by onAuthStateChange, we can return early
+      if (user && user.id === data.user.id) {
+        return { success: true };
+      }
+
       const profile = await fetchProfile(data.user.id);
       if (profile) {
         setUser(mapProfileToUser(profile));
