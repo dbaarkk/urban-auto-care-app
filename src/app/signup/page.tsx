@@ -18,10 +18,16 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  const { signup } = useAuth();
-  const router = useRouter();
+    const { signup, user } = useAuth();
+    const router = useRouter();
 
-  const validate = () => {
+    useEffect(() => {
+      if (user) {
+        router.replace('/home');
+      }
+    }, [user, router]);
+
+    const validate = () => {
     const newErrors: Record<string, string> = {};
     
     if (!name.trim()) newErrors.name = 'Full name is required';
