@@ -123,14 +123,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const signup = async (name: string, email: string, phone: string, password: string) => {
       try {
-        // Call the custom API route to create user with auto-confirmation
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, email, phone, password }),
         });
 
-        const result = await response.json();
+        let result;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error(text || 'Server error occurred');
+        }
+
         if (!response.ok) throw new Error(result.error || 'Signup failed');
 
         // After successful creation and auto-confirmation, log the user in to establish session
@@ -139,7 +146,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         return { success: true };
       } catch (error: any) {
-        return { success: false, error: error.message };
+        console.error('Signup error:', error);
+        return { success: false, error: error.message || 'An unexpected error occurred' };
       }
     };
 
@@ -152,19 +160,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
   
         if (error) {
-          // If email is not confirmed but password is correct, Supabase returns this error
-          // We bypass this to allow instant login as requested
           if (error.message.toLowerCase().includes('email not confirmed')) {
-            // We need the user ID to fetch the profile. 
-            // We can't get it from signInWithPassword if it fails.
-            // But we can try to fetch the profile by email since RLS is disabled.
             const { data: profileData, error: profileError } = await supabase
               .from('profiles')
               .select('*')
               .eq('email', email)
-              .single();
+              .maybeSingle();
             
-            if (profileError || !profileData) throw new Error('Email not confirmed and profile not found');
+            if (profileError || !profileData) throw new Error('Account not fully set up. Please try signing up again.');
             
             setUser({
               id: profileData.id,
@@ -187,11 +190,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             email: profile.email,
             phone: profile.phone
           });
+        } else {
+          // If session exists but profile is missing, try to create it or handle gracefully
+          setUser({
+            id: data.user.id,
+            name: data.user.user_metadata?.full_name || 'User',
+            email: data.user.email || email,
+            phone: data.user.user_metadata?.phone || ''
+          });
         }
   
         return { success: true };
       } catch (error: any) {
-        return { success: false, error: error.message };
+        console.error('Login error:', error);
+        return { success: false, error: error.message || 'Invalid credentials' };
       }
     };
 
