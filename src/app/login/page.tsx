@@ -43,12 +43,13 @@ export default function LoginPage() {
     
     setLoading(true);
     const result = await login(email, password);
-    setLoading(false);
     
     if (result.success) {
       toast.success('Welcome back!');
       router.replace('/home');
+      // No setLoading(false) here to avoid UI flickers during redirect
     } else {
+      setLoading(false);
       toast.error(result.error || 'Login failed');
     }
   };
