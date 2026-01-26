@@ -15,10 +15,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  const { login } = useAuth();
-  const router = useRouter();
+    const { login, user } = useAuth();
+    const router = useRouter();
 
-  const validate = () => {
+    useEffect(() => {
+      if (user) {
+        router.replace('/home');
+      }
+    }, [user, router]);
+
+    const validate = () => {
     const newErrors: Record<string, string> = {};
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
