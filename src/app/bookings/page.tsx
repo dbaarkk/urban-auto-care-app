@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ArrowLeft, Calendar, Clock, MapPin, X, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 
 export default function BookingsPage() {
@@ -47,9 +47,11 @@ export default function BookingsPage() {
     }
   };
 
-  const sortedBookings = [...bookings].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const sortedBookings = useMemo(() => {
+    return [...bookings].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [bookings]);
 
   return (
     <div className="mobile-container bg-gray-50 min-h-screen safe-bottom">
