@@ -35,13 +35,14 @@ interface AuthContextType {
   signup: (name: string, email: string, phone: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   bookings: Booking[];
-  refreshBookings: () => Promise<void>;
-  updateLocation: (address: string, coords: { lat: number; lng: number }) => Promise<{ success: boolean; error?: string }>;
-  addBooking: (booking: Omit<Booking, 'id' | 'userId' | 'createdAt' | 'status'>) => Promise<{ success: boolean; error?: string }>;
-  cancelBooking: (bookingId: string) => Promise<{ success: boolean; error?: string }>;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+    refreshBookings: () => Promise<void>;
+    updateLocation: (address: string, coords: { lat: number; lng: number }) => Promise<{ success: boolean; error?: string }>;
+    addBooking: (booking: Omit<Booking, 'id' | 'userId' | 'createdAt' | 'status'>) => Promise<{ success: boolean; error?: string }>;
+    cancelBooking: (bookingId: string) => Promise<{ success: boolean; error?: string }>;
+    rescheduleBooking: (bookingId: string, newDateTime: string) => Promise<{ success: boolean; error?: string }>;
+  }
+  
+  const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -131,35 +132,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (profile) {
-          setUser(mapProfileToUser(profile));
+    useEffect(() => {
+      const timeoutId = setTimeout(() => {
+        if (isLoading) {
+          console.warn('Auth initialization timed out');
+          setIsLoading(false);
         }
-      }
-      setIsLoading(false);
-    };
+      }, 5000);
 
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (profile) {
-          setUser(mapProfileToUser(profile));
+      const getSession = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            const profile = await fetchProfile(session.user.id);
+            if (profile) {
+              setUser(mapProfileToUser(profile));
+            }
+          }
+        } catch (error) {
+          console.error('Error in getSession:', error);
+        } finally {
+          setIsLoading(false);
         }
-      } else {
-        setUser(null);
-        setBookings([]);
-      }
-      setIsLoading(false);
-    });
+      };
 
-    return () => subscription.unsubscribe();
-  }, []);
+      getSession();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (session?.user) {
+          const profile = await fetchProfile(session.user.id);
+          if (profile) {
+            setUser(mapProfileToUser(profile));
+          }
+        } else {
+          setUser(null);
+          setBookings([]);
+        }
+        setIsLoading(false);
+      });
+
+      return () => {
+        clearTimeout(timeoutId);
+        subscription.unsubscribe();
+      };
+    }, []);
 
   useEffect(() => {
     if (user) {
@@ -323,37 +339,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const cancelBooking = async (bookingId: string) => {
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .delete()
-        .eq('id', bookingId);
+    const cancelBooking = async (bookingId: string) => {
+      try {
+        const { error } = await supabase
+          .from('bookings')
+          .delete()
+          .eq('id', bookingId);
+  
+        if (error) throw error;
+        await refreshBookings();
+        return { success: true };
+      } catch (error: any) {
+        return { success: false, error: error.message };
+      }
+    };
 
-      if (error) throw error;
-      await refreshBookings();
-      return { success: true };
-    } catch (error: any) {
-      return { success: false, error: error.message };
-    }
-  };
+    const rescheduleBooking = async (bookingId: string, newDateTime: string) => {
+      try {
+        const [d, t] = newDateTime.split(' ');
+        let bookingDateISO = new Date().toISOString();
+        if (d && t) {
+          bookingDateISO = new Date(`${d}T${t}`).toISOString();
+        }
 
-  return (
-    <AuthContext.Provider value={{ 
-      user, 
-      isLoading, 
-      login, 
-      signup, 
-      logout, 
-      bookings, 
-      refreshBookings,
-      updateLocation,
-      addBooking, 
-      cancelBooking 
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+        const { error } = await supabase
+          .from('bookings')
+          .update({
+            preferred_date_time: newDateTime,
+            booking_date: bookingDateISO,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bookingId);
+
+        if (error) throw error;
+        await refreshBookings();
+        return { success: true };
+      } catch (error: any) {
+        console.error('Reschedule error:', error);
+        return { success: false, error: error.message };
+      }
+    };
+  
+    return (
+      <AuthContext.Provider value={{ 
+        user, 
+        isLoading, 
+        login, 
+        signup, 
+        logout, 
+        bookings, 
+        refreshBookings,
+        updateLocation,
+        addBooking, 
+        cancelBooking,
+        rescheduleBooking
+      }}>
+        {children}
+      </AuthContext.Provider>
+    );
 }
 
 export function useAuth() {
