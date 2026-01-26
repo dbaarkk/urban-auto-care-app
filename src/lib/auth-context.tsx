@@ -16,7 +16,12 @@ export interface Booking {
   userId: string;
   serviceName: string;
   bookingDate: string;
-  status: 'pending' | 'confirmed' | 'completed';
+  preferredDateTime: string;
+  vehicleType: string;
+  vehicleNumber?: string;
+  address: string;
+  notes?: string;
+  status: 'Pending' | 'Confirmed' | 'Completed';
   totalAmount?: number;
   createdAt: string;
 }
@@ -68,7 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         userId: b.user_id,
         serviceName: b.service_name,
         bookingDate: b.booking_date,
-        status: b.status,
+        preferredDateTime: b.preferred_date_time || b.booking_date,
+        vehicleType: b.vehicle_type || 'Unknown',
+        vehicleNumber: b.vehicle_number,
+        address: b.address || '',
+        notes: b.notes,
+        status: b.status || 'Pending',
         totalAmount: b.total_amount,
         createdAt: b.created_at
       })));
@@ -237,16 +247,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           {
             user_id: user.id,
             service_name: bookingData.serviceName,
-            booking_date: bookingData.bookingDate,
-            total_amount: bookingData.totalAmount,
+            vehicle_type: bookingData.vehicleType,
+            vehicle_number: bookingData.vehicleNumber,
+            address: bookingData.address,
+            preferred_date_time: bookingData.preferredDateTime,
+            notes: bookingData.notes,
+            status: 'Pending',
+            total_amount: bookingData.totalAmount || 0,
           }
         ])
         .select();
 
       if (error) throw error;
-      await refreshBookings();
+      
+      // Optimistically update local state for "instant" feel
+      if (data && data[0]) {
+        const newBooking: Booking = {
+          id: data[0].id,
+          userId: data[0].user_id,
+          serviceName: data[0].service_name,
+          bookingDate: data[0].booking_date || new Date().toISOString(),
+          preferredDateTime: data[0].preferred_date_time,
+          vehicleType: data[0].vehicle_type,
+          vehicleNumber: data[0].vehicle_number,
+          address: data[0].address,
+          notes: data[0].notes,
+          status: data[0].status || 'Pending',
+          totalAmount: data[0].total_amount,
+          createdAt: data[0].created_at
+        };
+        setBookings(prev => [newBooking, ...prev]);
+      } else {
+        await refreshBookings();
+      }
+      
       return { success: true };
     } catch (error: any) {
+      console.error('Add booking error:', error);
       return { success: false, error: error.message };
     }
   };
