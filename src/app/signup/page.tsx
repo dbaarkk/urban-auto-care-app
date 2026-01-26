@@ -56,12 +56,13 @@ export default function SignupPage() {
     
     setLoading(true);
     const result = await signup(name, email, phone, password);
-    setLoading(false);
     
     if (result.success) {
       toast.success('Account created successfully!');
       router.replace('/home');
+      // No setLoading(false) here to avoid UI flickers during redirect
     } else {
+      setLoading(false);
       toast.error(result.error || 'Failed to create account');
     }
   };
