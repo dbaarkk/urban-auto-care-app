@@ -23,133 +23,30 @@ function BookingContent() {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [fetchingLocation, setFetchingLocation] = useState(false);
-  const [locationFetched, setLocationFetched] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
+  const { updateLocation } = useAuth();
   const service = getServiceById(selectedService);
 
-  const fetchLocation = async () => {
-    if (fetchingLocation) return;
-    setFetchingLocation(true);
+  useEffect(() => {
+    if (user?.locationAddress) {
+      setAddress(user.locationAddress);
+    }
+  }, [user?.locationAddress]);
+
+  const handleLocationSelect = async (newAddress: string, coords: { lat: number; lng: number }) => {
+    setAddress(newAddress);
+    setShowPicker(false);
     
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0 // Force fresh location for accuracy
-    };
-
-    const getAddress = async (latitude: number, longitude: number) => {
-      try {
-        const response = await fetch(
-          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-        );
-        const data = await response.json();
-        
-        const parts = {
-          street: '',
-          house: '',
-          area: data.locality || '',
-          city: data.city || '',
-          state: data.principalSubdivision || '',
-          pincode: data.postcode || ''
-        };
-
-        if (data.localityInfo && data.localityInfo.informative) {
-          data.localityInfo.informative.forEach((info: any) => {
-            if (info.order <= 10) {
-              if (!parts.street && (info.name.includes('Road') || info.name.includes('Street') || info.description === 'road')) {
-                parts.street = info.name;
-              }
-            }
-          });
-        }
-
-        const addressParts = [];
-        if (parts.street) addressParts.push(parts.street);
-        if (parts.area && parts.area !== parts.street) addressParts.push(parts.area);
-        if (parts.city && parts.city !== parts.area) addressParts.push(parts.city);
-        if (parts.state) addressParts.push(parts.state);
-        if (parts.pincode) addressParts.push(parts.pincode);
-        
-        const fullAddress = addressParts.join(', ');
-        
-        if (fullAddress) {
-          setAddress(fullAddress);
-          toast.success('Address fetched successfully');
-        } else {
-          setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-        }
-      } catch (error) {
-        console.error('Geocoding error:', error);
-        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-      } finally {
-        setFetchingLocation(false);
-        setLocationFetched(true);
-      }
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        getAddress(position.coords.latitude, position.coords.longitude);
-      },
-      (error) => {
-        console.error('Location error:', error);
-        setFetchingLocation(false);
-        setLocationFetched(true);
-        let message = 'Could not fetch location';
-        if (error.code === 1) message = 'Location permission denied';
-        else if (error.code === 2) message = 'Position unavailable';
-        else if (error.code === 3) message = 'Request timed out';
-        toast.error(message);
-      },
-      options
-    );
+    // Bind location to account as requested
+    await updateLocation(newAddress, coords);
+    toast.success('Location updated');
   };
 
-  const handleAddressFocus = async () => {
-    if (address || fetchingLocation || locationFetched) return;
-    
-    if (!navigator.geolocation) {
-      toast.error('Geolocation not supported');
-      return;
-    }
-
-    if (navigator.permissions) {
-      try {
-        const permission = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-        
-        if (permission.state === 'denied') {
-          toast.error('Location blocked. Reset in browser settings: Site Settings > Location > Allow', {
-            duration: 5000
-          });
-          setLocationFetched(true);
-          return;
-        }
-        
-        fetchLocation();
-      } catch {
-        fetchLocation();
-      }
-    } else {
-      fetchLocation();
-    }
+  const handleAddressClick = () => {
+    setShowPicker(true);
   };
 
-  useEffect(() => {
-    if (!isLoading && !user) {
-      router.replace('/signup');
-    }
-  }, [isLoading, user, router]);
-
-  useEffect(() => {
-    if (navigator.permissions && !address) {
-      navigator.permissions.query({ name: 'geolocation' as PermissionName }).then((result) => {
-        if (result.state === 'granted') {
-          fetchLocation();
-        }
-      });
-    }
-  }, [address]);
 
   if (isLoading || !user) {
     return (
@@ -300,22 +197,27 @@ function BookingContent() {
             <MapPin className="w-4 h-4 text-primary" />
             Service Address
           </h3>
-          <textarea
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            onFocus={handleAddressFocus}
-            placeholder={fetchingLocation ? "Fetching your location..." : "Tap to fetch your location or enter manually"}
-            rows={3}
-            className={`w-full px-4 py-3 rounded-xl border ${errors.address ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm outline-none resize-none`}
-          />
-          {fetchingLocation && (
-            <p className="text-primary text-xs mt-1 flex items-center gap-1">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Fetching your location...
-            </p>
-          )}
+          <div 
+            onClick={handleAddressClick}
+            className={`w-full px-4 py-3 rounded-xl border ${errors.address ? 'border-red-400' : 'border-gray-200'} bg-gray-50 text-sm cursor-pointer min-h-[80px]`}
+          >
+            {address ? (
+              <span className="text-gray-900">{address}</span>
+            ) : (
+              <span className="text-gray-400">Tap to select location on map</span>
+            )}
+          </div>
           {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
         </div>
+
+        {showPicker && (
+          <LocationPicker 
+            onSelect={handleLocationSelect}
+            onClose={() => setShowPicker(false)}
+            initialAddress={address}
+            initialCoords={user?.locationCoords}
+          />
+        )}
 
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
