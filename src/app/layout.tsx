@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import VisualEditsMessenger from "../visual-edits/VisualEditsMessenger";
 import ErrorReporter from "@/components/ErrorReporter";
@@ -7,12 +7,18 @@ import { AuthProvider } from "@/lib/auth-context";
 import BottomNav from "@/components/BottomNav";
 import { Toaster } from "sonner";
 
+export const viewport: Viewport = {
+  themeColor: "#1e3a8a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: "Urban Auto | Premium Car Care in Raipur",
   description: "Raipur's premier modern mechanized car care brand. Professional car cleaning, detailing, and auto services.",
   manifest: "/manifest.json",
-  themeColor: "#1e3a8a",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -22,15 +28,10 @@ export const metadata: Metadata = {
     telephone: true,
   },
   applicationName: "Urban Auto",
-  other: {
-    "mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Urban Auto",
-    "theme-color": "#1e3a8a",
-    "msapplication-TileColor": "#1e3a8a",
-    "msapplication-tap-highlight": "no"
-  }
+    other: {
+      "msapplication-TileColor": "#1e3a8a",
+      "msapplication-tap-highlight": "no"
+    }
 };
 
 export default function RootLayout({
