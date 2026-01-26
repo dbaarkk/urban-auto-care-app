@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
@@ -15,14 +15,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-    const { login, user } = useAuth();
-    const router = useRouter();
+  const { login, user } = useAuth();
+  const router = useRouter();
 
-    useEffect(() => {
-      if (user) {
-        router.replace('/home');
-      }
-    }, [user, router]);
+  useEffect(() => {
+    if (user) {
+      router.replace('/home');
+    }
+  }, [user, router]);
 
     const validate = () => {
     const newErrors: Record<string, string> = {};
