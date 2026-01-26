@@ -15,88 +15,98 @@ interface LocationPickerProps {
 
 const MAPPLS_TOKEN = 'gptxrebbfjeohukcnuzrhdjduowmjuniwzme';
 
-export default function LocationPicker({ onSelect, onClose, initialCoords, initialAddress }: LocationPickerProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const [address, setAddress] = useState(initialAddress || '');
-  const [coords, setCoords] = useState(initialCoords || { lat: 20.5937, lng: 78.9629 }); // Center of India
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
+  const RAIPUR_CENTER = { lat: 21.2514, lng: 81.6296 };
+  const RAIPUR_BOUNDS = [
+    [81.50, 21.15], // SW [lng, lat]
+    [81.75, 21.35]  // NE [lng, lat]
+  ];
 
-  useEffect(() => {
-    if (!mapRef.current) return;
+  export default function LocationPicker({ onSelect, onClose, initialCoords, initialAddress }: LocationPickerProps) {
+    const mapRef = useRef<HTMLDivElement>(null);
+    const mapInstanceRef = useRef<any>(null);
+    const markerRef = useRef<any>(null);
+    const [address, setAddress] = useState(initialAddress || '');
+    const [coords, setCoords] = useState(initialCoords || RAIPUR_CENTER);
+    const [isMapLoaded, setIsMapLoaded] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
 
-    const mapplsObj = new mappls();
+    useEffect(() => {
+      if (!mapRef.current) return;
 
-    mapplsObj.initialize(MAPPLS_TOKEN, { map: true, layer: 'vector', version: '3.0' }, () => {
-      // For Mappls v3.0 (Mapbox-based), center is [lng, lat]
-      const map = mapplsObj.Map({
-        id: 'mappls-map',
-        properties: {
-          center: [coords.lng, coords.lat],
-          zoom: initialCoords ? 15 : 5,
-          zoomControl: true,
-          location: true,
+      const mapplsObj = new mappls();
+
+      mapplsObj.initialize(MAPPLS_TOKEN, { map: true, layer: 'vector', version: '3.0' }, () => {
+        const map = mapplsObj.Map({
+          id: 'mappls-map',
+          properties: {
+            center: [coords.lng, coords.lat],
+            zoom: 13,
+            zoomControl: true,
+            location: true,
+            // Restrict to Raipur bounds if supported by the version
+            maxBounds: RAIPUR_BOUNDS
+          }
+        });
+
+        mapInstanceRef.current = map;
+
+        map.on('load', () => {
+          setIsMapLoaded(true);
+          
+          const marker = new mapplsObj.Marker({
+            map: map,
+            position: { lat: coords.lat, lng: coords.lng },
+            draggable: true
+          });
+          markerRef.current = marker;
+
+          marker.on('dragend', (e: any) => {
+            const newPos = e.target.getLngLat();
+            const newCoords = { lat: newPos.lat, lng: newPos.lng };
+            setCoords(newCoords);
+            reverseGeocode(newCoords);
+          });
+
+          map.on('click', (e: any) => {
+            const newCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+            marker.setLngLat([newCoords.lng, newCoords.lat]);
+            setCoords(newCoords);
+            reverseGeocode(newCoords);
+          });
+        });
+      });
+
+      return () => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
         }
-      });
+      };
+    }, []);
 
-      mapInstanceRef.current = map;
-
-      map.on('load', () => {
-        setIsMapLoaded(true);
-        
-        // Add Marker
-        const marker = new mapplsObj.Marker({
-          map: map,
-          position: { lat: coords.lat, lng: coords.lng },
-          draggable: true
-        });
-        markerRef.current = marker;
-
-        marker.on('dragend', (e: any) => {
-          const newPos = e.target.getLngLat();
-          const newCoords = { lat: newPos.lat, lng: newPos.lng };
-          setCoords(newCoords);
-          reverseGeocode(newCoords);
-        });
-
-        map.on('click', (e: any) => {
-          const newCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-          marker.setLngLat([newCoords.lng, newCoords.lat]); // [lng, lat] for setLngLat
-          setCoords(newCoords);
-          reverseGeocode(newCoords);
-        });
-      });
-    });
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+    const reverseGeocode = async (c: { lat: number; lng: number }) => {
+      try {
+        const response = await fetch(`https://search.mappls.com/search/address/rev-geocode?lat=${c.lat}&lng=${c.lng}&access_token=${MAPPLS_TOKEN}`);
+        const data = await response.json();
+        if (data.results && data.results[0]) {
+          setAddress(data.results[0].formatted_address);
+        }
+      } catch (error) {
+        console.error('Reverse geocoding error:', error);
       }
     };
-  }, []);
 
-  const reverseGeocode = async (c: { lat: number; lng: number }) => {
-    try {
-      const response = await fetch(`https://search.mappls.com/search/address/rev-geocode?lat=${c.lat}&lng=${c.lng}&access_token=${MAPPLS_TOKEN}`);
-      const data = await response.json();
-      if (data.results && data.results[0]) {
-        setAddress(data.results[0].formatted_address);
-      }
-    } catch (error) {
-      console.error('Reverse geocoding error:', error);
-    }
-  };
+    const handleSearch = async () => {
+      if (!searchQuery) return;
+      setIsSearching(true);
+      try {
+        // Append Raipur to query to ensure results are relevant
+        const fullQuery = searchQuery.toLowerCase().includes('raipur') 
+          ? searchQuery 
+          : `${searchQuery} Raipur`;
 
-  const handleSearch = async () => {
-    if (!searchQuery) return;
-    setIsSearching(true);
-    try {
-      // Atlas Geocode API
-      const response = await fetch(`https://atlas.mappls.com/api/places/geocode?address=${encodeURIComponent(searchQuery)}&itemCount=1&access_token=${MAPPLS_TOKEN}`);
-      const data = await response.json();
+        const response = await fetch(`https://atlas.mappls.com/api/places/geocode?address=${encodeURIComponent(fullQuery)}&itemCount=1&access_token=${MAPPLS_TOKEN}`);
+        const data = await response.json();
       
       let result = null;
       let newLat = 0;
