@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  output: 'export',
+  // output: 'export', // Removed to support API routes in production
   turbopack: {
     rules: {
       "*.{jsx,tsx}": {
