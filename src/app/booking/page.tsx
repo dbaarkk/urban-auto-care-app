@@ -177,23 +177,31 @@ function BookingContent() {
 
     setSubmitting(true);
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const result = await addBooking({
+        serviceId: selectedService,
+        serviceName: service?.name || '',
+        vehicleType,
+        vehicleNumber,
+        address,
+        preferredDateTime: `${date} ${time}`,
+        notes,
+        totalAmount: 0, // Prices not defined in metadata yet
+      });
 
-    addBooking({
-      serviceId: selectedService,
-      serviceName: service?.name || '',
-      vehicleType,
-      vehicleNumber,
-      address,
-      preferredDateTime: `${date} ${time}`,
-      notes,
-    });
-
-    setSubmitting(false);
-    toast.success('Booking confirmed!', {
-      description: 'We will contact you shortly to confirm your appointment.',
-    });
-    router.push('/bookings');
+      if (result.success) {
+        toast.success('Booking confirmed!', {
+          description: 'We will contact you shortly to confirm your appointment.',
+        });
+        router.push('/bookings');
+      } else {
+        toast.error(result.error || 'Failed to confirm booking');
+      }
+    } catch (err) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const minDate = new Date().toISOString().split('T')[0];
