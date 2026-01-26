@@ -20,7 +20,7 @@ export default function LocationPicker({ onSelect, onClose, initialCoords, initi
   const mapInstanceRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [address, setAddress] = useState(initialAddress || '');
-  const [coords, setCoords] = useState(initialCoords || { lat: 28.6139, lng: 77.2090 });
+  const [coords, setCoords] = useState(initialCoords || { lat: 20.5937, lng: 78.9629 }); // Center of India
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -31,11 +31,12 @@ export default function LocationPicker({ onSelect, onClose, initialCoords, initi
     const mapplsObj = new mappls();
 
     mapplsObj.initialize(MAPPLS_TOKEN, { map: true, layer: 'vector', version: '3.0' }, () => {
+      // For Mappls v3.0 (Mapbox-based), center is [lng, lat]
       const map = mapplsObj.Map({
         id: 'mappls-map',
         properties: {
           center: [coords.lng, coords.lat],
-          zoom: 15,
+          zoom: initialCoords ? 15 : 5,
           zoomControl: true,
           location: true,
         }
@@ -63,7 +64,7 @@ export default function LocationPicker({ onSelect, onClose, initialCoords, initi
 
         map.on('click', (e: any) => {
           const newCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
-          marker.setLngLat(e.lngLat);
+          marker.setLngLat([newCoords.lng, newCoords.lat]); // [lng, lat] for setLngLat
           setCoords(newCoords);
           reverseGeocode(newCoords);
         });
@@ -79,7 +80,7 @@ export default function LocationPicker({ onSelect, onClose, initialCoords, initi
 
   const reverseGeocode = async (c: { lat: number; lng: number }) => {
     try {
-      const response = await fetch(`https://apis.mappls.com/advancedmaps/v1/${MAPPLS_TOKEN}/rev_geocode?lat=${c.lat}&lng=${c.lng}`);
+      const response = await fetch(`https://search.mappls.com/search/address/rev-geocode?lat=${c.lat}&lng=${c.lng}&access_token=${MAPPLS_TOKEN}`);
       const data = await response.json();
       if (data.results && data.results[0]) {
         setAddress(data.results[0].formatted_address);
@@ -93,33 +94,53 @@ export default function LocationPicker({ onSelect, onClose, initialCoords, initi
     if (!searchQuery) return;
     setIsSearching(true);
     try {
-      // Using Atlas Geocode API with the static token
-      const response = await fetch(`https://atlas.mappls.com/api/places/geocode?address=${encodeURIComponent(searchQuery)}&itemCount=1`, {
-        headers: {
-          'Authorization': `Bearer ${MAPPLS_TOKEN}`
-        }
-      });
-      
+      // Atlas Geocode API
+      const response = await fetch(`https://atlas.mappls.com/api/places/geocode?address=${encodeURIComponent(searchQuery)}&itemCount=1&access_token=${MAPPLS_TOKEN}`);
       const data = await response.json();
+      
+      let result = null;
+      let newLat = 0;
+      let newLng = 0;
+      let newAddr = '';
+
       if (data.copResults) {
-        const result = data.copResults;
-        const newCoords = { lat: parseFloat(result.latitude), lng: parseFloat(result.longitude) };
-        setCoords(newCoords);
-        setAddress(result.formattedAddress);
-        
-        if (mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.setCenter([newCoords.lng, newCoords.lat]);
-          markerRef.current.setLngLat([newCoords.lng, newCoords.lat]);
-        }
+        result = Array.isArray(data.copResults) ? data.copResults[0] : data.copResults;
+        newLat = parseFloat(result.latitude || result.lat);
+        newLng = parseFloat(result.longitude || result.lng);
+        newAddr = result.formattedAddress || result.formatted_address;
       } else if (data.results && data.results[0]) {
-        const result = data.results[0];
-        const newCoords = { lat: parseFloat(result.lat), lng: parseFloat(result.lng) };
+        result = data.results[0];
+        newLat = parseFloat(result.lat || result.latitude);
+        newLng = parseFloat(result.lng || result.longitude);
+        newAddr = result.formatted_address || result.formattedAddress;
+      }
+
+      if (newLat && newLng) {
+        const newCoords = { lat: newLat, lng: newLng };
         setCoords(newCoords);
-        setAddress(result.formatted_address);
+        setAddress(newAddr);
         
         if (mapInstanceRef.current && markerRef.current) {
-          mapInstanceRef.current.setCenter([newCoords.lng, newCoords.lat]);
-          markerRef.current.setLngLat([newCoords.lng, newCoords.lat]);
+          mapInstanceRef.current.setCenter([newLng, newLat]); // [lng, lat]
+          mapInstanceRef.current.setZoom(15);
+          markerRef.current.setLngLat([newLng, newLat]); // [lng, lat]
+        }
+      } else if (result && result.eLoc) {
+        // If only eLoc is returned, we need to fetch details for coordinates
+        const detailResponse = await fetch(`https://atlas.mappls.com/api/places/eloc/${result.eLoc}?access_token=${MAPPLS_TOKEN}`);
+        const detailData = await detailResponse.json();
+        if (detailData.latitude && detailData.longitude) {
+          const detailLat = parseFloat(detailData.latitude);
+          const detailLng = parseFloat(detailData.longitude);
+          const newCoords = { lat: detailLat, lng: detailLng };
+          setCoords(newCoords);
+          setAddress(newAddr || detailData.formattedAddress);
+          
+          if (mapInstanceRef.current && markerRef.current) {
+            mapInstanceRef.current.setCenter([detailLng, detailLat]);
+            mapInstanceRef.current.setZoom(15);
+            markerRef.current.setLngLat([detailLng, detailLat]);
+          }
         }
       }
     } catch (error) {
@@ -140,7 +161,7 @@ export default function LocationPicker({ onSelect, onClose, initialCoords, initi
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            placeholder="Search location..."
+            placeholder="Search location in India..."
             className="bg-zinc-800 border-zinc-700 text-white pl-10 h-11"
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
