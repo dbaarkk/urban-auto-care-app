@@ -8,8 +8,11 @@ workflows:
       java: 21
 
     scripts:
-      - name: Install dependencies
+      - name: Clean install (deterministic)
         script: |
+          rm -rf node_modules
+          rm -f package-lock.json
+          npm install better-auth@^1.3.17
           npm install
 
       - name: Build Next.js
@@ -24,6 +27,7 @@ workflows:
         script: |
           cd android
           chmod +x gradlew
+          ./gradlew clean
           ./gradlew bundleRelease
           ./gradlew assembleDebug
           ./gradlew assembleRelease
