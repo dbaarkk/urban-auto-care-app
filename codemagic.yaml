@@ -22,18 +22,16 @@ workflows:
         script: |
           npx cap sync android
 
-      - name: Regenerate Gradle Wrapper (Gradle 8.13)
+      - name: Generate proper Gradle Wrapper (8.13)
         script: |
           cd android
           rm -rf gradle/wrapper
-          mkdir -p gradle/wrapper
-          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip" > gradle/wrapper/gradle-wrapper.properties
-          curl -L https://raw.githubusercontent.com/gradle/gradle/v8.13.0/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
+          gradle wrapper --gradle-version 8.13
+          chmod +x gradlew
 
       - name: Build Android (AAB + APK)
         script: |
           cd android
-          chmod +x gradlew
           ./gradlew clean
           ./gradlew bundleRelease
           ./gradlew assembleDebug
