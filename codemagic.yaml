@@ -8,7 +8,7 @@ workflows:
       java: 21
 
     scripts:
-      - name: Clean install (deterministic)
+      - name: Install dependencies
         script: |
           rm -rf node_modules
           npm install better-auth@^1.3.17
@@ -22,21 +22,13 @@ workflows:
         script: |
           npx cap sync android
 
-      - name: Ensure valid Gradle wrapper
+      - name: Regenerate Gradle Wrapper (clean)
         script: |
           cd android
-          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
-            echo "Gradle wrapper missing. Regenerating..."
-            gradle wrapper
-          fi
-
-          # Validate jar is not corrupted
-          file gradle/wrapper/gradle-wrapper.jar | grep -q "Zip archive" || {
-            echo "Corrupted gradle-wrapper.jar detected. Regenerating..."
-            rm -f gradle/wrapper/gradle-wrapper.jar
-            rm -f gradle/wrapper/gradle-wrapper.properties
-            gradle wrapper
-          }
+          rm -rf gradle/wrapper
+          mkdir -p gradle/wrapper
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-bin.zip" > gradle/wrapper/gradle-wrapper.properties
+          curl -L https://raw.githubusercontent.com/gradle/gradle/master/gradle/wrapper/gradle-wrapper.jar -o gradle/wrapper/gradle-wrapper.jar
 
       - name: Build Android (AAB + APK)
         script: |
