@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Signed APK + AAB (Stable)
+    name: Urban Auto - Fast Signed Build
     max_build_duration: 120
 
     environment:
@@ -13,7 +13,9 @@ workflows:
       cache_paths:
         - ~/.npm
         - node_modules
+        - .next/cache
         - android/.gradle
+        - ~/.gradle
 
     scripts:
 
@@ -36,21 +38,28 @@ workflows:
         script: |
           npx cap sync android
 
-      # ---- FIX GRADLE VERSION + CORRUPT WRAPPER ----
-      - name: Fix Gradle Wrapper (8.13 required)
+      # Only fix wrapper if missing (avoid re-download every build)
+      - name: Ensure Gradle wrapper
         script: |
           cd android
-          rm -rf gradle/wrapper
-          gradle wrapper --gradle-version 8.13
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            rm -rf gradle/wrapper
+            gradle wrapper --gradle-version 8.13
+          fi
           chmod +x gradlew
+          cd ..
 
-      # ---- BUILD SIGNED FILES ----
-      - name: Build Signed APK + AAB
+      - name: Speed up Gradle
+        script: |
+          echo "org.gradle.daemon=true" >> android/gradle.properties
+          echo "org.gradle.parallel=true" >> android/gradle.properties
+          echo "org.gradle.configureondemand=true" >> android/gradle.properties
+          echo "org.gradle.caching=true" >> android/gradle.properties
+
+      - name: Build Signed APK + AAB (NO CLEAN)
         script: |
           cd android
-          ./gradlew clean
-          ./gradlew assembleRelease
-          ./gradlew bundleRelease
+          ./gradlew assembleRelease bundleRelease
 
     artifacts:
       - android/app/build/outputs/**/*.apk
