@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Signed APK + AAB
+    name: Urban Auto - Stable Signed APK + AAB
     max_build_duration: 120
 
     environment:
@@ -11,10 +11,11 @@ workflows:
 
     scripts:
 
-      - name: Install dependencies
+      - name: Clean install dependencies (no ERESOLVE)
         script: |
-          rm -rf node_modules
-          npm install
+          rm -rf node_modules package-lock.json
+          npm cache clean --force
+          npm install --legacy-peer-deps
 
       - name: Build Next.js
         script: |
@@ -26,7 +27,7 @@ workflows:
             npx cap add android
           fi
 
-      - name: Generate Android icons (adaptive)
+      - name: Generate Android icons
         script: |
           npx @capacitor/assets generate --android
 
