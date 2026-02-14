@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Fix Gradle + Signed Build
+    name: Urban Auto - Final Signed Build
     max_build_duration: 120
 
     environment:
@@ -10,7 +10,6 @@ workflows:
         - supabase
 
     scripts:
-
       - name: Clean install dependencies
         script: |
           rm -rf node_modules package-lock.json
@@ -35,8 +34,7 @@ workflows:
         script: |
           npx cap sync android
 
-      # ---- FIX CORRUPT GRADLE WRAPPER ----
-      - name: Regenerate Gradle Wrapper
+      - name: Regenerate Gradle Wrapper (fix corrupt jar)
         script: |
           cd android
           rm -rf gradle/wrapper
@@ -51,9 +49,9 @@ workflows:
           echo "MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD" >> android/gradle.properties
 
       - name: Force release signing for APK
-  script: |
-    # Force release signing inside Gradle
-    sed -i '' 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n        }/g' android/app/build.gradle || true
+        script: |
+          sed -i '' 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n        }/g' android/app/build.gradle || true
+
       - name: Build Signed APK + AAB
         script: |
           cd android
