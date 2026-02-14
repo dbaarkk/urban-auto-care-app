@@ -35,14 +35,12 @@ workflows:
         script: |
           npx cap sync android
 
-      # Fix corrupt wrapper safely (won’t touch signing)
-      - name: Ensure valid Gradle wrapper
+      # ---- FORCE FIX CORRUPT GRADLE WRAPPER ----
+      - name: Regenerate Gradle wrapper (fix corrupt jar)
         script: |
           cd android
-          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            rm -rf gradle/wrapper
-            gradle wrapper --gradle-version 8.7
-          fi
+          rm -rf gradle/wrapper
+          gradle wrapper --gradle-version 8.7
           chmod +x gradlew
           cd ..
 
