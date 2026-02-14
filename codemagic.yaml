@@ -1,43 +1,58 @@
 workflows:
   android-builds:
-    name: Urban Auto - AAB + APK (Debug + Release)
+    name: Urban Auto - Signed APK + AAB
     max_build_duration: 120
 
     environment:
       node: 22
       java: 21
+      groups:
+        - supabase
 
     scripts:
+
       - name: Install dependencies
         script: |
           rm -rf node_modules
-          npm install better-auth@^1.3.17
           npm install
 
       - name: Build Next.js
         script: |
           npm run build
 
+      - name: Ensure Android platform exists
+        script: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+
+      - name: Generate Android icons (adaptive)
+        script: |
+          npx @capacitor/assets generate --android
+
       - name: Sync Capacitor Android
         script: |
           npx cap sync android
 
-      - name: Generate proper Gradle Wrapper (8.13)
+      - name: Inject keystore into Gradle
         script: |
-          cd android
-          rm -rf gradle/wrapper
-          gradle wrapper --gradle-version 8.13
-          chmod +x gradlew
+          echo "MYAPP_UPLOAD_STORE_FILE=$CM_KEYSTORE_PATH" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_ALIAS=$CM_KEY_ALIAS" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD" >> android/gradle.properties
+          echo "MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD" >> android/gradle.properties
 
-      - name: Build Android (AAB + APK)
+      - name: Enable release signing
+        script: |
+          sed -i '' 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' android/app/build.gradle || true
+
+      - name: Build Signed APK + AAB
         script: |
           cd android
+          chmod +x gradlew
           ./gradlew clean
-          ./gradlew bundleRelease
-          ./gradlew assembleDebug
           ./gradlew assembleRelease
+          ./gradlew bundleRelease
 
     artifacts:
-      - android/app/build/outputs/bundle/release/*.aab
-      - android/app/build/outputs/apk/debug/*.apk
-      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.aab
