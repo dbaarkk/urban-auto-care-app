@@ -50,10 +50,10 @@ workflows:
           echo "MYAPP_UPLOAD_STORE_PASSWORD=$CM_KEYSTORE_PASSWORD" >> android/gradle.properties
           echo "MYAPP_UPLOAD_KEY_PASSWORD=$CM_KEY_PASSWORD" >> android/gradle.properties
 
-      - name: Enable release signing
-        script: |
-          sed -i '' 's/signingConfig signingConfigs.debug/signingConfig signingConfigs.release/g' android/app/build.gradle || true
-
+      - name: Force release signing for APK
+  script: |
+    # Force release signing inside Gradle
+    sed -i '' 's/buildTypes {/buildTypes {\n        release {\n            signingConfig signingConfigs.release\n        }/g' android/app/build.gradle || true
       - name: Build Signed APK + AAB
         script: |
           cd android
