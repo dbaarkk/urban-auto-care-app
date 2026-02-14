@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Stable Signed APK + AAB
+    name: Urban Auto - Fix Gradle + Signed Build
     max_build_duration: 120
 
     environment:
@@ -11,7 +11,7 @@ workflows:
 
     scripts:
 
-      - name: Clean install dependencies (no ERESOLVE)
+      - name: Clean install dependencies
         script: |
           rm -rf node_modules package-lock.json
           npm cache clean --force
@@ -35,6 +35,14 @@ workflows:
         script: |
           npx cap sync android
 
+      # ---- FIX CORRUPT GRADLE WRAPPER ----
+      - name: Regenerate Gradle Wrapper
+        script: |
+          cd android
+          rm -rf gradle/wrapper
+          gradle wrapper --gradle-version 8.13
+          chmod +x gradlew
+
       - name: Inject keystore into Gradle
         script: |
           echo "MYAPP_UPLOAD_STORE_FILE=$CM_KEYSTORE_PATH" >> android/gradle.properties
@@ -49,7 +57,6 @@ workflows:
       - name: Build Signed APK + AAB
         script: |
           cd android
-          chmod +x gradlew
           ./gradlew clean
           ./gradlew assembleRelease
           ./gradlew bundleRelease
