@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Fast Signed Build
+    name: Urban Auto - FINAL Stable Signed Build
     max_build_duration: 120
 
     environment:
@@ -19,7 +19,7 @@ workflows:
 
     scripts:
 
-      - name: Install dependencies (cached)
+      - name: Install dependencies
         script: |
           npm install --legacy-peer-deps
 
@@ -28,38 +28,32 @@ workflows:
           export NEXT_TELEMETRY_DISABLED=1
           npm run build
 
-      - name: Ensure Android platform exists
+      - name: Verify Android platform exists
         script: |
           if [ ! -d "android" ]; then
-            npx cap add android
+            echo "Android folder missing"
+            exit 1
           fi
 
       - name: Sync Capacitor
         script: |
           npx cap sync android
 
-      # Only fix wrapper if missing (avoid re-download every build)
-      - name: Ensure Gradle wrapper
+      # ----- ALWAYS REBUILD WRAPPER CLEAN -----
+      - name: Regenerate Gradle Wrapper (PERMANENT FIX)
         script: |
           cd android
-          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
-            rm -rf gradle/wrapper
-            gradle wrapper --gradle-version 8.13
-          fi
+          rm -rf gradle/wrapper
+          gradle wrapper --gradle-version 8.13
           chmod +x gradlew
           cd ..
 
-      - name: Speed up Gradle
-        script: |
-          echo "org.gradle.daemon=true" >> android/gradle.properties
-          echo "org.gradle.parallel=true" >> android/gradle.properties
-          echo "org.gradle.configureondemand=true" >> android/gradle.properties
-          echo "org.gradle.caching=true" >> android/gradle.properties
-
-      - name: Build Signed APK + AAB (NO CLEAN)
+      - name: Build Signed APK + AAB (Clean)
         script: |
           cd android
-          ./gradlew assembleRelease bundleRelease
+          ./gradlew clean
+          ./gradlew assembleRelease
+          ./gradlew bundleRelease
 
     artifacts:
       - android/app/build/outputs/**/*.apk
