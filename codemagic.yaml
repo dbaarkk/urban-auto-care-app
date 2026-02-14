@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Final Signed Build
+    name: Urban Auto - Signed APK + AAB (Stable)
     max_build_duration: 120
 
     environment:
@@ -9,16 +9,21 @@ workflows:
       groups:
         - supabase
 
+    cache:
+      cache_paths:
+        - ~/.npm
+        - node_modules
+        - android/.gradle
+
     scripts:
 
-      - name: Install dependencies
+      - name: Install dependencies (cached)
         script: |
-          rm -rf node_modules package-lock.json
-          npm cache clean --force
           npm install --legacy-peer-deps
 
       - name: Build Next.js
         script: |
+          export NEXT_TELEMETRY_DISABLED=1
           npm run build
 
       - name: Ensure Android platform exists
@@ -27,23 +32,19 @@ workflows:
             npx cap add android
           fi
 
-      - name: Generate Android icons
-        script: |
-          npx @capacitor/assets generate --android
-
-      - name: Sync Capacitor Android
+      - name: Sync Capacitor
         script: |
           npx cap sync android
 
-      # ---- FORCE FIX CORRUPT GRADLE WRAPPER ----
-      - name: Regenerate Gradle wrapper (fix corrupt jar)
+      # ---- FIX GRADLE VERSION + CORRUPT WRAPPER ----
+      - name: Fix Gradle Wrapper (8.13 required)
         script: |
           cd android
           rm -rf gradle/wrapper
           gradle wrapper --gradle-version 8.13
           chmod +x gradlew
-          cd ..
 
+      # ---- BUILD SIGNED FILES ----
       - name: Build Signed APK + AAB
         script: |
           cd android
