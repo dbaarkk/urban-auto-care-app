@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - FINAL Stable Signed Build
+    name: Urban Auto - FINAL Signed Build (All APKs + AAB)
     max_build_duration: 120
 
     environment:
@@ -28,24 +28,21 @@ workflows:
           export NEXT_TELEMETRY_DISABLED=1
           npm run build
 
-      - name: Verify Android platform exists
+      - name: Ensure Android platform exists
         script: |
           if [ ! -d "android" ]; then
-            echo "Android folder missing in repo"
-            exit 1
+            npx cap add android
           fi
 
       - name: Sync Capacitor
         script: |
           npx cap sync android
 
-      # -------- FIX MISSING ICONS (adaptive icon) --------
-      - name: Generate Android icons (fix resource errors)
+      - name: Generate Android icons
         script: |
           npx @capacitor/assets generate --android
 
-      # -------- FIX CORRUPT WRAPPER + CORRECT VERSION --------
-      - name: Regenerate Gradle Wrapper (8.13)
+      - name: Fix Gradle Wrapper (8.13)
         script: |
           cd android
           rm -rf gradle/wrapper
@@ -53,8 +50,14 @@ workflows:
           chmod +x gradlew
           cd ..
 
-      # -------- BUILD SIGNED APK + AAB --------
-      - name: Build Signed APK + AAB (Clean)
+      # ---- BUILD ALL ----
+      - name: Build Debug APK
+        script: |
+          cd android
+          ./gradlew assembleDebug
+          cd ..
+
+      - name: Build Release APK + AAB (Signed)
         script: |
           cd android
           ./gradlew clean
@@ -62,5 +65,6 @@ workflows:
           ./gradlew bundleRelease
 
     artifacts:
-      - android/app/build/outputs/**/*.apk
-      - android/app/build/outputs/**/*.aab
+      - android/app/build/outputs/apk/debug/*.apk
+      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
