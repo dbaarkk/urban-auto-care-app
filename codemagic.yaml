@@ -1,6 +1,6 @@
 workflows:
   android-builds:
-    name: Urban Auto - Stable Build (AAB + APK)
+    name: Urban Auto - Final Signed Build
     max_build_duration: 120
 
     environment:
@@ -10,6 +10,7 @@ workflows:
         - supabase
 
     scripts:
+
       - name: Install dependencies
         script: |
           rm -rf node_modules package-lock.json
@@ -34,24 +35,24 @@ workflows:
         script: |
           npx cap sync android
 
-      - name: Fix corrupt Gradle wrapper (safe)
+      # Fix corrupt wrapper safely (won’t touch signing)
+      - name: Ensure valid Gradle wrapper
         script: |
           cd android
-          rm -rf gradle/wrapper
-          gradle wrapper --gradle-version 8.13
+          if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+            rm -rf gradle/wrapper
+            gradle wrapper --gradle-version 8.7
+          fi
           chmod +x gradlew
+          cd ..
 
-      - name: Build AAB (Play Store)
+      - name: Build Signed APK + AAB
         script: |
           cd android
           ./gradlew clean
+          ./gradlew assembleRelease
           ./gradlew bundleRelease
 
-      - name: Build APK (manual install)
-        script: |
-          cd android
-          ./gradlew assembleRelease
-
     artifacts:
-      - android/app/build/outputs/**/*.aab
       - android/app/build/outputs/**/*.apk
+      - android/app/build/outputs/**/*.aab
