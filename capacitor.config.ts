@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Urban Auto',
   webDir: 'out',
   server: {
-    url: 'https://app-preview-ua.vercel.app',
+    url: 'https://app.theurbanauto.com',
     cleartext: true
   },
   plugins: {
