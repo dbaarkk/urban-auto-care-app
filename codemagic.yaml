@@ -31,7 +31,7 @@ workflows:
       - name: Verify Android platform exists
         script: |
           if [ ! -d "android" ]; then
-            echo "Android folder missing"
+            echo "Android folder missing in repo"
             exit 1
           fi
 
@@ -39,8 +39,13 @@ workflows:
         script: |
           npx cap sync android
 
-      # ----- ALWAYS REBUILD WRAPPER CLEAN -----
-      - name: Regenerate Gradle Wrapper (PERMANENT FIX)
+      # -------- FIX MISSING ICONS (adaptive icon) --------
+      - name: Generate Android icons (fix resource errors)
+        script: |
+          npx @capacitor/assets generate --android
+
+      # -------- FIX CORRUPT WRAPPER + CORRECT VERSION --------
+      - name: Regenerate Gradle Wrapper (8.13)
         script: |
           cd android
           rm -rf gradle/wrapper
@@ -48,6 +53,7 @@ workflows:
           chmod +x gradlew
           cd ..
 
+      # -------- BUILD SIGNED APK + AAB --------
       - name: Build Signed APK + AAB (Clean)
         script: |
           cd android
