@@ -34,17 +34,16 @@ workflows:
         script: |
           npx cap sync android
 
-      - name: Regenerate Gradle Wrapper (fix corrupt jar)
+      - name: Regenerate Gradle Wrapper
         script: |
           cd android
           rm -rf gradle/wrapper
           gradle wrapper --gradle-version 8.13
           chmod +x gradlew
 
-      # --- ADD REAL RELEASE SIGNING CONFIG ---
-      - name: Add release signing config to Gradle
+      - name: Add release signing config
         script: |
-          cat >> android/app/build.gradle <<'EOF'
+          cat <<'EOF' >> android/app/build.gradle
 
 android {
     signingConfigs {
@@ -61,6 +60,7 @@ android {
         }
     }
 }
+
 EOF
 
       - name: Build Signed APK + AAB
